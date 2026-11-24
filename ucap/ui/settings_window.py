@@ -267,13 +267,14 @@ class SettingsWindow(QWidget):
         self._hk_row(g, 2, "cmd_hotkey", "command_hotkey")
         g.addWidget(_label(self.t("cmd_help"), "Muted", wrap=True), 3, 1)
         self._hk_row(g, 4, "paste_hotkey", "paste_hotkey")
+        self._hk_row(g, 5, "meet_hotkey", "meeting_hotkey")
         self.hk_warn = QLabel(self.t("hotkey_conflict_saved"))
         self.hk_warn.setWordWrap(True)
         self.hk_warn.setStyleSheet(f"color:{th.ERR}; font-weight:700;")
         self.hk_warn.setVisible(self.app.hotkey_conflicts())
-        g.addWidget(self.hk_warn, 5, 1)
+        g.addWidget(self.hk_warn, 6, 1)
 
-        g.addWidget(_label(self.t("mic"), "Field"), 6, 0)
+        g.addWidget(_label(self.t("mic"), "Field"), 7, 0)
         devices = list_input_devices()
         self._dev_ids = [None] + [i for i, _ in devices]
         mic = QComboBox()
@@ -281,15 +282,15 @@ class SettingsWindow(QWidget):
         mic.setCurrentIndex(self._dev_ids.index(s["mic_device"]) if s["mic_device"] in self._dev_ids else 0)
         mic.setMinimumWidth(340)
         mic.currentIndexChanged.connect(lambda i: self._changed("mic_device", self._dev_ids[i]))
-        g.addWidget(mic, 6, 1, Qt.AlignLeft)
+        g.addWidget(mic, 7, 1, Qt.AlignLeft)
 
-        g.addWidget(_label(self.t("language"), "Field"), 7, 0)
+        g.addWidget(_label(self.t("language"), "Field"), 8, 0)
         lang = QComboBox()
         lang.addItems([LANGUAGE_NAMES[c] if c in LANGUAGE_NAMES else self.t(f"lang_{c}") for c in LANGS])
         lang.setCurrentIndex(LANGS.index(s["language"]) if s["language"] in LANGS else 0)
         lang.setMinimumWidth(180)
         lang.currentIndexChanged.connect(lambda i: self._changed("language", LANGS[i]))
-        g.addWidget(lang, 7, 1, Qt.AlignLeft)
+        g.addWidget(lang, 8, 1, Qt.AlignLeft)
         lay.addLayout(g)
 
         sep = QFrame()
@@ -806,10 +807,11 @@ class SettingsWindow(QWidget):
     # ---- Meetings ----
     def _tab_meetings(self, lay):
         lay.addWidget(_label(self.t("meet_help"), "Muted", wrap=True))
-        cb = QCheckBox(self.t("meet_system_audio"))
-        cb.setChecked(bool(self.app.settings["meeting_system_audio"]))
-        cb.toggled.connect(lambda v: self._changed("meeting_system_audio", v))
-        lay.addWidget(cb)
+        for key in ("meeting_system_audio", "meeting_screen_speakers"):
+            cb = QCheckBox(self.t(key.replace("meeting_", "meet_")))
+            cb.setChecked(bool(self.app.settings[key]))
+            cb.toggled.connect(lambda v, k=key: self._changed(k, v))
+            lay.addWidget(cb)
         top = QHBoxLayout()
         self.meet_btn = _button("", True, self.app.meeting_toggle)
         self.meet_retry_btn = _button(self.t("meet_retry"), slot=self.app.meeting_retry)

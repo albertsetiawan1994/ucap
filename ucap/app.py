@@ -103,7 +103,8 @@ class UcapApp:
         self._pump_timer.start()
         return self.qt.exec()
 
-    HOTKEYS = (("hotkey", "hotkey"), ("command_hotkey", "cmd_hotkey"), ("paste_hotkey", "paste_hotkey"))
+    HOTKEYS = (("hotkey", "hotkey"), ("command_hotkey", "cmd_hotkey"), ("paste_hotkey", "paste_hotkey"),
+               ("meeting_hotkey", "meet_hotkey"))
 
     def hotkey_conflict(self, key: str, value: str) -> str | None:
         """i18n label of another hotkey that `value` would clash with, or None."""
@@ -117,6 +118,7 @@ class UcapApp:
 
     def _bind_paste_hotkey(self) -> None:
         self.listener.set_extra("paste", self.settings["paste_hotkey"], lambda: self.post(("paste_last",)))
+        self.listener.set_extra("meeting", self.settings["meeting_hotkey"], lambda: self.post(("meeting_hotkey",)))
 
     def _run_screenshot(self) -> int:
         w = self.win
@@ -474,6 +476,12 @@ class UcapApp:
             self.meet = session
             self.pill.show_message(self.t("meet_started"), error=False, ms=1800)
         self._meeting_changed()
+
+    def _on_meeting_hotkey(self) -> None:
+        if not self._hotkey_paused:  # not while the user is recording a new hotkey
+            self.meeting_toggle()
+            if self.meet and self.meet.state == "processing":
+                self.pill.show_message(self.t("meet_stopping"), error=False, ms=2000)
 
     def meeting_retry(self) -> None:
         if self.meet:

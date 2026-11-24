@@ -92,3 +92,23 @@ def test_silent_part_is_not_marked_as_failed(tmp_path, monkeypatch, fake_gemini)
     s = MeetingSession(app)
     run(s)
     assert app.meetings.items[0]["transcript"] == "Speaker 1: halo" and not s.needs_retry
+
+
+def test_known_speakers_and_screenshots_reach_the_next_chunk(tmp_path, monkeypatch):
+    seen = []
+
+    def transcribe(wav, pool, model, prompt, available, instruction="", images=(), **k):
+        seen.append((prompt, instruction, list(images)))
+        return {"text": "Pak Budi: Selamat pagi semua." if len(seen) == 1 else "Sari: Siap."}
+
+    monkeypatch.setattr(gemini_client, "transcribe", transcribe)
+    monkeypatch.setattr(gemini_client, "generate", lambda *a, **k: {"text": "# R"})
+    app = FakeApp(tmp_path)
+    s = MeetingSession(app)
+    s.shots = [(15, b"jpg1")]
+    s._cut(SPEECH)
+    s._cut(SPEECH)
+    run(s, chunks=0)
+    assert seen[0][2] == [b"jpg1"] and "15s" in seen[0][1] and seen[1][2] == []
+    assert "Pak Budi" in seen[1][0] and "identified earlier" not in seen[0][0]
+    assert s.speakers == ["Pak Budi", "Sari"]

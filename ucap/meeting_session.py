@@ -5,11 +5,11 @@ import queue
 import threading
 import time
 
-from . import audio, gemini_client, meetings
+from . import audio, gemini_client, meetings, screen
 from .errors import UcapError
 
-CHUNK_INSTRUCTION = "Transcribe this meeting recording. Output only the transcript."
 MIN_CHUNK_SECONDS = 1.0
+SHOT_INTERVAL_S = 15  # one screenshot of the meeting window this often (names on video tiles, active speaker)
 
 
 class MeetingSession:
@@ -25,7 +25,10 @@ class MeetingSession:
         self.last_cut = 0.0
         self.total = self.done = 0
         self.parts: dict[int, str] = {}
-        self.failed: dict[int, bytes] = {}
+        self.failed: dict[int, tuple] = {}  # idx -> (wav, shots), kept in memory for a retry
+        self.shots: list[tuple[int, bytes]] = []  # (seconds into the current chunk, jpeg)
+        self.speakers: list[str] = []  # names found so far, passed to the next chunk
+        self.last_shot = 0.0
         self.record_id: str | None = None
         self.secs = 0
         self.no_summary = False
@@ -44,14 +47,22 @@ class MeetingSession:
             except Exception:  # noqa: BLE001 - library or output device missing: microphone only
                 self.loop = None
         self.state, self.t0 = "recording", time.monotonic()
-        self.last_cut = self.t0
+        self.last_cut = self.last_shot = self.t0
         threading.Thread(target=self._worker, daemon=True).start()
 
     def elapsed(self) -> int:
         return int(time.monotonic() - self.t0)
 
     def tick(self) -> None:
-        if self.state == "recording" and time.monotonic() - self.last_cut >= meetings.CHUNK_SECONDS:
+        if self.state != "recording":
+            return
+        now = time.monotonic()
+        if self.app.settings["meeting_screen_speakers"] and now - self.last_shot >= SHOT_INTERVAL_S:
+            self.last_shot = now
+            jpg = screen.capture(screen.pick_meeting_window(screen.list_windows()))
+            if jpg:
+                self.shots.append((int(now - self.last_cut), jpg))
+        if now - self.last_cut >= meetings.CHUNK_SECONDS:
             self._cut(self._mix(self.rec.drain()))
 
     def _mix(self, mic):
@@ -84,25 +95,31 @@ class MeetingSession:
 
     def _cut(self, samples) -> None:
         self.last_cut = time.monotonic()
+        shots, self.shots = self.shots, []
         if samples.size >= audio.SAMPLE_RATE * MIN_CHUNK_SECONDS and audio.is_usable(samples):
             idx, self.total = self.total, self.total + 1
-            self._q.put(("chunk", (idx, audio.to_wav(samples))))
+            self._q.put(("chunk", (idx, audio.to_wav(samples), shots)))
 
     # ---- worker thread ----
     def _args(self):
         s = self.app.settings
         return s["model"], list(s["model_list"])
 
-    def _transcribe(self, idx: int, wav: bytes) -> None:
+    def _transcribe(self, idx: int, wav: bytes, shots: list) -> None:
         model, available = self._args()
+        prompt = meetings.transcribe_prompt(self._language, self._dictionary, self.speakers, bool(shots))
         try:
             r = gemini_client.transcribe(
-                wav, self.app.pool, model, meetings.transcribe_prompt(self._language, self._dictionary), available,
-                instruction=CHUNK_INSTRUCTION, timeout_ms=meetings.CHUNK_TIMEOUT_MS, budget_s=meetings.CHUNK_BUDGET_S)
+                wav, self.app.pool, model, prompt, available,
+                instruction=meetings.chunk_instruction([t for t, _ in shots]), images=[j for _, j in shots],
+                timeout_ms=meetings.CHUNK_TIMEOUT_MS, budget_s=meetings.CHUNK_BUDGET_S)
             self.parts[idx] = r["text"]
             self.failed.pop(idx, None)
+            for name in meetings.extract_speakers(r["text"]):
+                if name not in self.speakers:
+                    self.speakers.append(name)
         except Exception:  # noqa: BLE001 - kept in memory for a retry
-            self.failed[idx] = wav
+            self.failed[idx] = (wav, shots)
         self.done += 1
         self.app.post(("meeting_progress",))
 
@@ -112,9 +129,9 @@ class MeetingSession:
             if kind == "chunk":
                 self._transcribe(*payload)
             elif kind == "retry":
-                for idx, wav in sorted(self.failed.items()):
+                for idx, (wav, shots) in sorted(self.failed.items()):
                     self.done -= 1
-                    self._transcribe(idx, wav)
+                    self._transcribe(idx, wav, shots)
                 self._finalize()
                 return
             else:  # end

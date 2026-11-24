@@ -57,6 +57,15 @@ Suara Anda dikirim **sekali** ke Gemini API (Google), yang mengubahnya menjadi t
   Suara dari speaker (peserta rapat online) ikut direkam lewat WASAPI loopback; matikan di tab Rapat jika
   tidak mau. Jika perangkat keluaran tidak mendukung, hanya mikrofon yang dipakai dan statusnya ditampilkan.
   Daftar rapat bisa dicari, diubah judulnya, dan diekspor ke file .md.
+  **Tombol mulai/stop rapat**: `Alt+Shift+M` (bisa diganti di tab Umum).
+  **Nama pembicara**: transkrip memakai nama asli bila ada petunjuk, yaitu perkenalan diri ("saya Andi dari
+  tim IT"), dipanggil/dipersilakan ("silakan Pak Budi"), atau dari layar aplikasi rapat. Untuk yang terakhir,
+  setiap 15 detik Ucap mengambil tangkapan layar jendela panggilan (Zoom, Teams, Webex, Google Meet di
+  browser, dll., hanya bila judul jendelanya menunjukkan panggilan) lalu mengirimnya ke Gemini bersama
+  audio; tidak disimpan. Jendela yang tertutup jendela lain ikut tertangkap apa adanya. Bisa dimatikan di tab
+  Rapat. Nama yang sudah dikenali dipakai lagi di bagian rapat berikutnya.
+  **Saran tindak lanjut (AI)**: bagian tambahan di notulen berisi saran dari AI (pertanyaan terbuka, risiko,
+  agenda berikutnya), terpisah dari keputusan dan tindak lanjut yang benar-benar disepakati.
 - **Peringatan tombol bentrok**: tombol pintas yang sama atau saling mencakup ditolak saat direkam, dan
   diberi tanda jika sudah tersimpan seperti itu.
 - **Konteks jendela**: judul jendela aktif (mis. nama kontak di WhatsApp, nama file di VS Code) dikirim ke

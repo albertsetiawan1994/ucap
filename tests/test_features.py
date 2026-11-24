@@ -233,3 +233,40 @@ def test_update_check():
         raise OSError("offline")
     assert updater.check("1.1.0", "me/ucap", boom) is None
     assert updater.parse_version("v2") == (2, 0, 0) and updater.parse_version("beta") == ()
+
+
+# ---- speakers / AI suggestions / meeting window ----
+def test_transcribe_prompt_names_speakers_from_cues():
+    p = meetings.transcribe_prompt("id", [], known_speakers=["Pak Budi", "Sari"], screenshots=True)
+    assert "silakan Pak Budi" in p and "Never guess a name" in p
+    assert "Pak Budi, Sari" in p and "active speaker" in p
+    q = meetings.transcribe_prompt("id")
+    assert "identified earlier" not in q and "Screenshots" not in q
+
+
+def test_extract_speakers():
+    text = "Pak Budi: Selamat pagi.\nSpeaker 2: Halo.\nSari: Oke.\nPak Budi: Lanjut.\nJadi kesimpulan kita hari ini adalah: lanjut"  # >4 words: a sentence, not a name
+    assert meetings.extract_speakers(text) == ["Pak Budi", "Sari"]
+
+
+def test_summary_prompt_has_participants_and_ai_suggestions():
+    p = meetings.summary_prompt()
+    assert "## Peserta" in p and "## Saran tindak lanjut (AI)" in p and "suggestion" in p.lower()
+
+
+def test_chunk_instruction_lists_screenshot_times():
+    assert "15s, 30s" in meetings.chunk_instruction([15, 30])
+    assert "Screenshots" not in meetings.chunk_instruction([])
+
+
+def test_pick_meeting_window():
+    from ucap.screen import pick_meeting_window
+    wins = [(1, "chrome.exe", "Docs - Google Chrome"), (2, "chrome.exe", "Meet - abc-defg-hij - Google Chrome"),
+            (3, "Zoom.exe", "Zoom Meeting")]
+    assert pick_meeting_window(wins) == 3                      # a meeting app beats a browser tab
+    assert pick_meeting_window(wins[:2]) == 2
+    assert pick_meeting_window(wins[:1]) == 0
+    chats = [(4, "WhatsApp.Root.exe", "WhatsApp"), (5, "ms-teams.exe", "Chat | Microsoft Teams"),
+             (6, "chrome.exe", "Zoom pricing - Google Chrome")]
+    assert pick_meeting_window(chats) == 0                     # open chat apps / random tabs are never captured
+    assert pick_meeting_window(chats + [(7, "ms-teams.exe", "Meeting with Sari | Microsoft Teams")]) == 7

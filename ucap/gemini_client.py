@@ -273,10 +273,11 @@ def generate(pool, model: str, system_prompt: str, contents: list, available: li
 
 def transcribe(wav_bytes: bytes, pool, model: str, system_prompt: str, available: list[str] | None = None,
                client_factory=None, clock=time.monotonic, instruction: str = USER_INSTRUCTION,
-               timeout_ms: int = TIMEOUT_MS, budget_s: float = BUDGET_S) -> dict:
-    """One audio clip through the key pool; `instruction` is the text sent next to the audio."""
+               timeout_ms: int = TIMEOUT_MS, budget_s: float = BUDGET_S, images=()) -> dict:
+    """One audio clip (plus optional JPEG screenshots) through the key pool; `instruction` is the text sent along."""
     from google.genai import types
-    contents = [types.Part.from_bytes(data=wav_bytes, mime_type="audio/wav"), instruction]
+    contents = [types.Part.from_bytes(data=wav_bytes, mime_type="audio/wav"),
+                *(types.Part.from_bytes(data=img, mime_type="image/jpeg") for img in images), instruction]
     return generate(pool, model, system_prompt, contents, available, client_factory, clock, timeout_ms, budget_s)
 
 

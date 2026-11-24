@@ -5,13 +5,14 @@ import html
 import threading
 import time
 
-from PySide6.QtCore import QRectF, Qt, QTimer
+from PySide6.QtCore import QPoint, QRect, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLayout,
                                QInputDialog, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
-                               QScrollArea, QTableWidget, QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget)
+                               QListWidget, QListWidgetItem, QScrollArea, QStackedWidget, QTableWidget, QTableWidgetItem,
+                               QTextEdit, QVBoxLayout, QWidget)
 
-from .. import i18n, meetings
+from .. import __version__, i18n, meetings
 from ..audio import list_input_devices
 from ..dictionary import suggest_terms
 from ..gemini_client import DEFAULT_MODEL, FALLBACK_MODELS, LANGUAGE_NAMES
@@ -22,6 +23,10 @@ from . import theme as th
 
 LANGS = ("auto", "id", "en", *LANGUAGE_NAMES)
 TABS = ("general", "gemini", "dict", "snippets", "styles", "history", "meetings", "stats")
+# Segoe Fluent Icons / MDL2 code points: Settings, Permissions (key), Dictionary, Paste, Font, History, People, Chart
+GLYPHS = dict(zip(TABS, ("", "", "", "", "", "", "", "")))
+COMPACT_WIDTH = 860  # narrower windows get an icon-only sidebar
+PAGE_MAX_WIDTH = 980
 
 
 class _Bars(QWidget):
@@ -48,13 +53,66 @@ class _Bars(QWidget):
             bar_h = (h - 40) * v / top
             x = i * slot + slot * 0.2
             p.setPen(Qt.NoPen)
-            p.setBrush(QColor(th.ACCENT if v else th.MUTED).lighter(100 if v else 170))
+            p.setBrush(QColor(th.ACCENT if v else th.LINE))
             p.drawRoundedRect(QRectF(x, h - 22 - bar_h, slot * 0.6, max(bar_h, 3)), 4, 4)
             p.setPen(QColor(th.MUTED))
             p.drawText(QRectF(i * slot, h - 20, slot, 20), Qt.AlignCenter, f"{day.day}/{day.month}")
             if v:
                 p.drawText(QRectF(i * slot, h - 22 - bar_h - 18, slot, 16), Qt.AlignCenter, str(v))
         p.end()
+
+
+class _Flow(QLayout):
+    """Lays buttons out left to right and wraps them onto the next line when the window is narrow."""
+
+    def __init__(self, spacing=8):
+        super().__init__()
+        self._items = []
+        self.setSpacing(spacing)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, i):
+        return self._items[i] if 0 <= i < len(self._items) else None
+
+    def takeAt(self, i):
+        return self._items.pop(i) if 0 <= i < len(self._items) else None
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._place(QRect(0, 0, width, 0), move=False)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._place(rect, move=True)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        return size
+
+    def _place(self, rect, move):
+        x, y, line = rect.x(), rect.y(), 0
+        for item in self._items:
+            hint = item.sizeHint()
+            if x + hint.width() > rect.right() + 1 and line:
+                x, y, line = rect.x(), y + line + self.spacing(), 0
+            if move:
+                item.setGeometry(QRect(QPoint(x, y), hint))
+            x += hint.width() + self.spacing()
+            line = max(line, hint.height())
+        return y + line - rect.y()
 
 
 class _Logo(QWidget):
@@ -124,6 +182,19 @@ def _sel(table):
     return rows[0].row() if rows else None
 
 
+def _card(page_lay, title=None, stretch=0):
+    """A white rounded section on the page; returns its inner layout."""
+    card = QFrame()
+    card.setObjectName("Card")
+    lay = QVBoxLayout(card)
+    lay.setContentsMargins(20, 16, 20, 18)
+    lay.setSpacing(10)
+    if title:
+        lay.addWidget(_label(title, "CardTitle"))
+    page_lay.addWidget(card, stretch)
+    return lay
+
+
 class SettingsWindow(QWidget):
     def __init__(self, app):
         super().__init__()
@@ -131,14 +202,14 @@ class SettingsWindow(QWidget):
         self.setObjectName("Root")
         self.setWindowTitle("Ucap")
         self.setWindowIcon(th.logo_icon())
-        self.resize(820, 700)
-        self.setMinimumSize(660, 520)
+        self.resize(1000, 720)
+        self.setMinimumSize(560, 480)
         self.tab_index = 0
         self._meet_view = "notes"
         self._meet_tick = QTimer(self, interval=1000, timeout=self.refresh_meeting)
         self._meet_tick.start()
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 16)
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
         self.build()
 
@@ -147,7 +218,7 @@ class SettingsWindow(QWidget):
 
     def show_tab(self, tab=None):
         if tab in TABS:
-            self.tabs.setCurrentIndex(TABS.index(tab))
+            self.nav.setCurrentRow(TABS.index(tab))
         self.showNormal()
         self.raise_()
         self.activateWindow()
@@ -155,6 +226,18 @@ class SettingsWindow(QWidget):
     def closeEvent(self, e):
         e.ignore()
         self.hide()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._apply_compact()
+
+    def _apply_compact(self):
+        compact = self.width() < COMPACT_WIDTH
+        self.side.setFixedWidth(76 if compact else 224)
+        for w in (self.brand_text, self.seg, self.version):
+            w.setVisible(not compact)
+        for i, key in enumerate(TABS):
+            self.nav.item(i).setText("" if compact else self.t(f"tab_{key}"))
 
     # ---- build ----
     def build(self):
@@ -164,52 +247,92 @@ class SettingsWindow(QWidget):
                 w.hide()
                 w.setParent(None)
                 w.deleteLater()
-        self._layout.addWidget(self._header())
-        self._layout.addWidget(self._status())
-        self.tabs = QTabWidget()
-        self.tabs.setDocumentMode(False)
+        self._layout.addWidget(self._sidebar())
+        content = QWidget()
+        content.setObjectName("Content")
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(28, 22, 28, 14)
+        cl.setSpacing(12)
+        top = QHBoxLayout()
+        self.page_title = _label("", "PageTitle")
+        top.addWidget(self.page_title)
+        top.addStretch()
+        self.hk_badge = _label("", "HkBadge")
+        top.addWidget(self.hk_badge, 0, Qt.AlignVCenter)
+        cl.addLayout(top)
+        cl.addWidget(self._status())
+        self.stack = QStackedWidget()
         for key, builder in zip(TABS, (self._tab_general, self._tab_gemini, self._tab_dict, self._tab_snippets,
                                        self._tab_styles, self._tab_history, self._tab_meetings,
                                        self._tab_stats)):
             page = QWidget()
-            page.setObjectName("Card")
-            page.setAttribute(Qt.WA_StyledBackground)
-            lay = QVBoxLayout(page)
-            lay.setContentsMargins(20, 18, 20, 18)
-            builder(lay)
-            scroll = QScrollArea()  # a tab taller than the window scrolls instead of squeezing its widgets
+            page.setMaximumWidth(PAGE_MAX_WIDTH)
+            self._page_lay = QVBoxLayout(page)
+            self._page_lay.setContentsMargins(0, 4, 6, 8)
+            self._page_lay.setSpacing(14)
+            multi = key in ("general", "meetings", "stats")
+            builder(_card(self._page_lay, stretch=0 if multi else 1))
+            if key in ("general", "stats"):
+                self._page_lay.addStretch()
+            holder = QWidget()  # centres the page on wide windows
+            hl = QHBoxLayout(holder)
+            hl.setContentsMargins(0, 0, 0, 0)
+            hl.addWidget(page, 1)
+            scroll = QScrollArea()  # a page taller than the window scrolls instead of squeezing its widgets
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.NoFrame)
-            scroll.setWidget(page)
-            self.tabs.addTab(scroll, self.t(f"tab_{key}"))
-        wrap = QWidget()
-        wl = QVBoxLayout(wrap)
-        wl.setContentsMargins(16, 6, 16, 0)
-        wl.addWidget(self.tabs)
-        self._layout.addWidget(wrap, 1)
-        self.tabs.setCurrentIndex(self.tab_index)
-        self.tabs.currentChanged.connect(lambda i: setattr(self, "tab_index", i))
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setWidget(holder)
+            self.stack.addWidget(scroll)
+        cl.addWidget(self.stack, 1)
+        self._layout.addWidget(content, 1)
+        self.nav.currentRowChanged.connect(self._go)
+        self.nav.setCurrentRow(self.tab_index)
+        self._go(self.tab_index)
+        self._apply_compact()
         self.refresh_status()
 
-    def _header(self):
-        h = QFrame()
-        h.setObjectName("Header")
-        h.setFixedHeight(78)
-        lay = QHBoxLayout(h)
-        lay.setContentsMargins(22, 0, 22, 0)
-        lay.addWidget(_Logo(42))
-        lay.addSpacing(10)
-        col = QVBoxLayout()
+    def _go(self, i):
+        if i < 0:
+            return
+        self.tab_index = i
+        self.stack.setCurrentIndex(i)
+        self.page_title.setText(self.t(f"tab_{TABS[i]}"))
+
+    def _sidebar(self):
+        side = QFrame()
+        side.setObjectName("Side")
+        self.side = side
+        v = QVBoxLayout(side)
+        v.setContentsMargins(14, 20, 14, 14)
+        v.setSpacing(6)
+        brand = QHBoxLayout()
+        brand.setSpacing(10)
+        brand.addWidget(_Logo(36))
+        self.brand_text = QWidget()
+        col = QVBoxLayout(self.brand_text)
+        col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(0)
-        col.addStretch()
         col.addWidget(_label("Ucap", "Title"))
         col.addWidget(_label(self.t("tagline"), "Tagline"))
-        col.addStretch()
-        lay.addLayout(col)
-        lay.addStretch()
-        seg = QFrame()
-        seg.setObjectName("Seg")
-        sl = QHBoxLayout(seg)
+        brand.addWidget(self.brand_text, 1)
+        v.addLayout(brand)
+        v.addSpacing(18)
+        self.nav = QListWidget()
+        self.nav.setObjectName("Nav")
+        self.nav.setIconSize(QSize(20, 20))
+        self.nav.setFocusPolicy(Qt.NoFocus)
+        self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.nav.setCursor(Qt.PointingHandCursor)
+        for key in TABS:
+            item = QListWidgetItem(th.glyph_icon(GLYPHS[key]), self.t(f"tab_{key}"))
+            item.setToolTip(self.t(f"tab_{key}"))
+            item.setSizeHint(QSize(0, 42))
+            self.nav.addItem(item)
+        v.addWidget(self.nav, 1)
+        self.seg = QFrame()
+        self.seg.setObjectName("Seg")
+        sl = QHBoxLayout(self.seg)
         sl.setContentsMargins(3, 3, 3, 3)
         sl.setSpacing(2)
         for code in ("id", "en"):
@@ -219,27 +342,24 @@ class SettingsWindow(QWidget):
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _=False, c=code: self.app.set_ui_lang(c))
             sl.addWidget(b)
-        lay.addWidget(seg, 0, Qt.AlignVCenter)
-        return h
+        v.addWidget(self.seg)
+        self.version = _label(f"v{__version__}", "Version")
+        v.addWidget(self.version)
+        return side
 
     def _status(self):
-        wrap = QWidget()
-        wl = QHBoxLayout(wrap)
-        wl.setContentsMargins(16, 12, 16, 4)
         s = QFrame()
         s.setObjectName("Status")
         lay = QHBoxLayout(s)
-        lay.setContentsMargins(12, 9, 12, 9)
+        lay.setContentsMargins(14, 10, 14, 10)
         self.status_dot = QLabel()
         self.status_dot.setFixedSize(10, 10)
         lay.addWidget(self.status_dot)
-        lay.addSpacing(4)
+        lay.addSpacing(6)
         self.status_lbl = QLabel()
+        self.status_lbl.setWordWrap(True)
         lay.addWidget(self.status_lbl, 1)
-        self.hk_badge = _label("", "HkBadge")
-        lay.addWidget(self.hk_badge)
-        wl.addWidget(s)
-        return wrap
+        return s
 
     def refresh_status(self):
         ok = self.app.has_key()
@@ -257,7 +377,7 @@ class SettingsWindow(QWidget):
     # ---- General ----
     def _tab_general(self, lay):
         s = self.app.settings
-        lay.addWidget(_label(self.t("sec_hotkeys"), "Field"))
+        lay.addWidget(_label(self.t("sec_hotkeys"), "CardTitle"))
         g = QGridLayout()
         g.setHorizontalSpacing(18)
         g.setVerticalSpacing(10)
@@ -273,52 +393,54 @@ class SettingsWindow(QWidget):
         self.hk_warn.setStyleSheet(f"color:{th.ERR}; font-weight:700;")
         self.hk_warn.setVisible(self.app.hotkey_conflicts())
         g.addWidget(self.hk_warn, 6, 1)
+        lay.addLayout(g)
 
-        g.addWidget(_label(self.t("mic"), "Field"), 7, 0)
+        rec = _card(self._page_lay, self.t("sec_recording"))
+        g = QGridLayout()
+        g.setHorizontalSpacing(18)
+        g.setVerticalSpacing(10)
+        g.setColumnStretch(1, 1)
+        g.addWidget(_label(self.t("mic"), "Field"), 0, 0)
         devices = list_input_devices()
         self._dev_ids = [None] + [i for i, _ in devices]
         mic = QComboBox()
         mic.addItems([self.t("mic_default")] + [n for _, n in devices])
         mic.setCurrentIndex(self._dev_ids.index(s["mic_device"]) if s["mic_device"] in self._dev_ids else 0)
-        mic.setMinimumWidth(340)
+        mic.setMinimumWidth(220)
         mic.currentIndexChanged.connect(lambda i: self._changed("mic_device", self._dev_ids[i]))
-        g.addWidget(mic, 7, 1, Qt.AlignLeft)
-
-        g.addWidget(_label(self.t("language"), "Field"), 8, 0)
+        g.addWidget(mic, 0, 1)
+        g.addWidget(_label(self.t("language"), "Field"), 1, 0)
         lang = QComboBox()
         lang.addItems([LANGUAGE_NAMES[c] if c in LANGUAGE_NAMES else self.t(f"lang_{c}") for c in LANGS])
         lang.setCurrentIndex(LANGS.index(s["language"]) if s["language"] in LANGS else 0)
         lang.setMinimumWidth(180)
         lang.currentIndexChanged.connect(lambda i: self._changed("language", LANGS[i]))
-        g.addWidget(lang, 8, 1, Qt.AlignLeft)
-        lay.addLayout(g)
+        g.addWidget(lang, 1, 1, Qt.AlignLeft)
+        rec.addLayout(g)
 
-        sep = QFrame()
-        sep.setObjectName("Sep")
-        lay.addSpacing(8)
-        lay.addWidget(sep)
-        lay.addSpacing(8)
-        lay.addWidget(_label(self.t("sec_options"), "Field"))
+        opts = _card(self._page_lay, self.t("sec_options"))
         for key, label in (("sound_cues", "sound_cues"), ("voice_send", "voice_send"), ("use_window_title", "use_window_title"),
                            ("check_updates", "check_updates"),
                            ("start_with_windows", "autostart"), ("keep_audio", "keep_audio")):
             cb = QCheckBox(self.t(label))
             cb.setChecked(bool(s[key]))
             cb.toggled.connect(lambda v, k=key: self._changed(k, v))
-            lay.addWidget(cb)
+            opts.addWidget(cb)
+
+        backup = _card(self._page_lay, self.t("sec_backup"))
+        backup.addWidget(_label(self.t("export_note"), "Muted", wrap=True))
         io = QHBoxLayout()
         io.addWidget(_button(self.t("export"), slot=self._export))
         io.addWidget(_button(self.t("import"), slot=self._import))
-        io.addWidget(_label(self.t("export_note"), "Muted"), 1)
-        lay.addLayout(io)
-        lay.addStretch()
+        io.addStretch()
+        backup.addLayout(io)
 
     def _hk_row(self, g, row, label, key):
         g.addWidget(_label(self.t(label), "Field"), row, 0)
         box = QHBoxLayout()
         edit = QLineEdit(format_combo(self.app.settings[key]))
         edit.setReadOnly(True)
-        edit.setFixedWidth(170)
+        edit.setFixedWidth(150)
         btn = _button(self.t("hotkey_record"))
         btn.clicked.connect(lambda: self._record_hotkey(key, edit, btn))
         box.addWidget(edit)
@@ -377,14 +499,14 @@ class SettingsWindow(QWidget):
     # ---- Gemini ----
     def _tab_gemini(self, lay):
         self._key_msg: dict[str, tuple[str, str]] = {}
-        lay.addWidget(_label(self.t("keys_title"), "Field"))
+        lay.addWidget(_label(self.t("keys_title"), "CardTitle"))
         lay.addWidget(_label(self.t("keys_note"), "Muted", wrap=True))
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setMinimumHeight(150)
         inner = QWidget()
-        inner.setObjectName("Card")
+        inner.setObjectName("Inner")
         self.keys_layout = QVBoxLayout(inner)
         self.keys_layout.setContentsMargins(0, 4, 6, 4)
         self.keys_layout.setSpacing(6)
@@ -743,7 +865,7 @@ class SettingsWindow(QWidget):
 
     # ---- History ----
     def _tab_history(self, lay):
-        btns = QHBoxLayout()
+        btns = _Flow()
         table = _table([self.t("time"), self.t("app"), self.t("via_col"), self.t("text")])
         table.setColumnWidth(0, 140)
         table.setColumnWidth(1, 120)
@@ -791,7 +913,6 @@ class SettingsWindow(QWidget):
         btns.addWidget(_button(self.t("reinsert"), slot=reinsert))
         btns.addWidget(_button(self.t("add_dict"), slot=add_dict))
         btns.addWidget(_button(self.t("remove"), slot=remove))
-        btns.addStretch()
         btns.addWidget(_button(self.t("clear_all"), slot=clear))
         lay.addLayout(btns)
         lay.addWidget(table, 1)
@@ -806,6 +927,7 @@ class SettingsWindow(QWidget):
 
     # ---- Meetings ----
     def _tab_meetings(self, lay):
+        lay.addWidget(_label(self.t("meet_rec_title"), "CardTitle"))
         lay.addWidget(_label(self.t("meet_help"), "Muted", wrap=True))
         for key in ("meeting_system_audio", "meeting_screen_speakers"):
             cb = QCheckBox(self.t(key.replace("meeting_", "meet_")))
@@ -826,22 +948,26 @@ class SettingsWindow(QWidget):
         self.meet_bar.hide()
         lay.addWidget(self.meet_bar)
 
+        lay = _card(self._page_lay, self.t("meet_list_title"), stretch=1)
         self.meet_filter = QLineEdit()
         self.meet_filter.setPlaceholderText(self.t("meet_search_ph"))
         self.meet_filter.setClearButtonEnabled(True)
         self.meet_filter.textChanged.connect(lambda _: self.refresh_meetings_list())
         lay.addWidget(self.meet_filter)
         table = _table([self.t("meet_col_title"), self.t("meet_col_date"), self.t("meet_col_len")])
-        table.setColumnWidth(0, 330)
-        table.setColumnWidth(1, 130)
-        table.setMinimumHeight(96)
+        hdr = table.horizontalHeader()  # the title column takes the spare width, so narrow windows still show all
+        hdr.setStretchLastSection(False)
+        hdr.setSectionResizeMode(0, QHeaderView.Stretch)
+        for c in (1, 2):
+            hdr.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+        table.setMinimumHeight(150)
         self.meet_table = table
         self._meet_rows = []
         lay.addWidget(table, 1)
         detail = QTextEdit()
         detail.setReadOnly(True)
         self.meet_detail = detail
-        btns = QHBoxLayout()
+        btns = _Flow()
         self._meet_btns = {}
         for view in ("notes", "transcript"):
             b = _button(self.t(f"meet_{view}"), slot=lambda _=False, v=view: self._meet_show(v))
@@ -851,13 +977,13 @@ class SettingsWindow(QWidget):
         btns.addWidget(_button(self.t("meet_rename"), slot=self._meet_rename))
         btns.addWidget(_button(self.t("meet_copy"), slot=self._meet_copy))
         btns.addWidget(_button(self.t("meet_export"), slot=self._meet_export))
-        btns.addStretch()
         btns.addWidget(_button(self.t("meet_delete"), slot=self._meet_delete))
         lay.addLayout(btns)
+        detail.setMinimumHeight(160)
         lay.addWidget(detail, 2)
         table.itemSelectionChanged.connect(lambda: self._meet_show(self._meet_view))
 
-        lay.addWidget(_label(self.t("meet_ask_title"), "Field"))
+        lay = _card(self._page_lay, self.t("meet_ask_title"))
         ask = QHBoxLayout()
         self.meet_q = QLineEdit()
         self.meet_q.setPlaceholderText(self.t("meet_ask_ph"))
@@ -995,11 +1121,9 @@ class SettingsWindow(QWidget):
             g.addWidget(v, i, 1)
             self.stat_vals[key] = v
         lay.addLayout(g)
-        lay.addSpacing(10)
-        lay.addWidget(_label(self.t("stat_chart"), "Field"))
+        chart = _card(self._page_lay, self.t("stat_chart"))
         self.stat_chart = _Bars()
-        lay.addWidget(self.stat_chart)
-        lay.addStretch()
+        chart.addWidget(self.stat_chart)
         self.refresh_stats()
 
     def refresh_stats(self):

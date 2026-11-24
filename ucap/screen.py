@@ -1,11 +1,14 @@
 """Find the online-meeting window and grab a small screenshot of it (who is talking, names on video tiles)."""
 from __future__ import annotations
 
-# These apps are also chat apps that stay open all day, so the window title must say it is a call:
-# screenshots of a normal chat window must never be sent.
-MEETING_APPS = {"zoom.exe", "ms-teams.exe", "teams.exe", "webex.exe", "ciscocollabhost.exe", "atmgr.exe",
-                "slack.exe", "discord.exe", "skype.exe", "lark.exe", "whatsapp.exe", "whatsapp.root.exe"}
-APP_CALL_WORDS = ("meeting", "call", "rapat", "panggilan", "huddle", "webinar", "rapat zoom")
+import re
+
+# Screenshots of a normal chat window must never be sent, so titles are matched as whole words/phrases.
+MEETING_APPS = {"zoom.exe", "webex.exe", "ciscocollabhost.exe", "atmgr.exe"}  # these only hold meetings
+CHAT_APPS = {"ms-teams.exe", "teams.exe", "slack.exe", "discord.exe", "skype.exe", "lark.exe", "whatsapp.exe",
+             "whatsapp.root.exe"}  # open all day for chat; channels may be called "meeting-notes" or "Rapat ..."
+MEETING_TITLE = re.compile(r"\b(meeting|webinar|rapat|call)\b")
+CALL_TITLE = re.compile(r"\b(call|huddle|panggilan)\b|\bmeeting (with|in)\b|\brapat (dengan|di)\b")
 BROWSERS = {"chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe"}
 BROWSER_CALL_TITLES = ("meet -", "google meet", "zoom meeting", "jitsi", "whereby", "webex meeting")
 MAX_WIDTH = 1280
@@ -16,7 +19,7 @@ def pick_meeting_window(windows: list[tuple[int, str, str]]) -> int:
     browser = 0
     for hwnd, exe, title in windows:
         exe, low = (exe or "").lower(), (title or "").lower()
-        if exe in MEETING_APPS and any(k in low for k in APP_CALL_WORDS):
+        if (exe in MEETING_APPS and MEETING_TITLE.search(low)) or (exe in CHAT_APPS and CALL_TITLE.search(low)):
             return hwnd
         if not browser and exe in BROWSERS and any(k in low for k in BROWSER_CALL_TITLES):
             browser = hwnd

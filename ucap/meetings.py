@@ -129,7 +129,9 @@ def summary_prompt() -> str:
 def qa_prompt() -> str:
     return ("You answer questions about the user's past meetings using only the notes provided. "
             "Answer in the language of the question, concisely, and say which meeting (title and date) each fact "
-            "comes from. If the answer is not in the notes, say that it is not in the notes. Never guess.")
+            "comes from. If the answer is not in the notes, say that it is not in the notes. Never guess. "
+            "The 'Saran tindak lanjut (AI)' sections are AI suggestions, not decisions or agreed action items: "
+            "never present them as something that was said or decided; mention them only as AI suggestions.")
 
 
 def _tokens(text: str) -> set[str]:

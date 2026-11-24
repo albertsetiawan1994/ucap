@@ -10,6 +10,8 @@ from .errors import UcapError
 
 MIN_CHUNK_SECONDS = 1.0
 SHOT_INTERVAL_S = 15  # one screenshot of the meeting window this often (names on video tiles, active speaker)
+# 5 min of WAV is ~9.6 MB; with this many image bytes the base64 request stays well under Gemini's 20 MB limit.
+SHOT_BUDGET_BYTES = 2_000_000
 
 
 class MeetingSession:
@@ -61,9 +63,14 @@ class MeetingSession:
             self.last_shot = now
             jpg = screen.capture(screen.pick_meeting_window(screen.list_windows()))
             if jpg:
-                self.shots.append((int(now - self.last_cut), jpg))
+                self.add_shot(int(now - self.last_cut), jpg)
         if now - self.last_cut >= meetings.CHUNK_SECONDS:
             self._cut(self._mix(self.rec.drain()))
+
+    def add_shot(self, secs: int, jpg: bytes) -> None:
+        """Keep a screenshot for the current chunk unless the chunk's image budget is used up."""
+        if sum(len(j) for _, j in self.shots) + len(jpg) <= SHOT_BUDGET_BYTES:
+            self.shots.append((secs, jpg))
 
     def _mix(self, mic):
         return audio.mix(mic, self.loop.drain()) if self.loop else mic
@@ -129,9 +136,9 @@ class MeetingSession:
             if kind == "chunk":
                 self._transcribe(*payload)
             elif kind == "retry":
-                for idx, (wav, shots) in sorted(self.failed.items()):
+                for idx, (wav, _shots) in sorted(self.failed.items()):
                     self.done -= 1
-                    self._transcribe(idx, wav, shots)
+                    self._transcribe(idx, wav, [])  # audio only: the images may be why it failed
                 self._finalize()
                 return
             else:  # end

@@ -76,3 +76,16 @@ def test_import_rejects_empty_or_retired_model(tmp_path):
     assert "model" not in storage.import_settings(s, {"model": " "})
     assert "model" not in storage.import_settings(s, {"model": "gemini-2.5-flash"})
     assert "model" in storage.import_settings(s, {"model": "gemini-3.6-flash"})
+
+
+def test_meeting_hotkey_message_only_when_it_stopped_a_recording(app, monkeypatch):
+    from types import SimpleNamespace
+    shown = []
+    monkeypatch.setattr(app.pill, "show_message", lambda text, **k: shown.append(text))
+    monkeypatch.setattr(app, "meeting_toggle", lambda: None)
+    app.meet = SimpleNamespace(state="processing")
+    app._on_meeting_hotkey()
+    assert shown == []                                      # nothing was stopped
+    app.meet = SimpleNamespace(state="recording")
+    app._on_meeting_hotkey()
+    assert shown == [app.t("meet_stopping")]

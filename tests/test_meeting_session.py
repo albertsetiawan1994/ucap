@@ -112,3 +112,33 @@ def test_known_speakers_and_screenshots_reach_the_next_chunk(tmp_path, monkeypat
     assert seen[0][2] == [b"jpg1"] and "15s" in seen[0][1] and seen[1][2] == []
     assert "Pak Budi" in seen[1][0] and "identified earlier" not in seen[0][0]
     assert s.speakers == ["Pak Budi", "Sari"]
+
+
+def test_screenshots_capped_per_chunk_and_retry_sends_none(tmp_path, monkeypatch):
+    from ucap import meeting_session as ms
+    sent = []
+
+    def transcribe(*a, images=(), **k):
+        sent.append(len(images))
+        if len(sent) == 1:
+            raise UcapError("unknown")  # e.g. request too large
+        return {"text": "Sari: ok"}
+
+    monkeypatch.setattr(gemini_client, "transcribe", transcribe)
+    monkeypatch.setattr(gemini_client, "generate", lambda *a, **k: {"text": "# R"})
+    app = FakeApp(tmp_path)
+    s = MeetingSession(app)
+    big = b"x" * (ms.SHOT_BUDGET_BYTES // 3 + 1)
+    for t in range(5):
+        s.add_shot(t, big)
+    assert len(s.shots) == 2                                   # third one would exceed the budget
+    s._cut(SPEECH)
+    run(s, chunks=0)
+    assert s.needs_retry and sent == [2]
+    s.state = "processing"
+    s._q.put(("retry", None))
+    import threading
+    t = threading.Thread(target=s._worker)
+    t.start()
+    t.join(5)
+    assert sent == [2, 0] and not s.needs_retry

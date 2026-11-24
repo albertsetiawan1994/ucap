@@ -270,3 +270,18 @@ def test_pick_meeting_window():
              (6, "chrome.exe", "Zoom pricing - Google Chrome")]
     assert pick_meeting_window(chats) == 0                     # open chat apps / random tabs are never captured
     assert pick_meeting_window(chats + [(7, "ms-teams.exe", "Meeting with Sari | Microsoft Teams")]) == 7
+
+
+def test_pick_meeting_window_whole_words_only():
+    from ucap.screen import pick_meeting_window
+    chats = [(1, "ms-teams.exe", "Chat | Callum Smith | Microsoft Teams"),
+             (2, "slack.exe", "Slack | meeting-notes | Acme"),
+             (3, "ms-teams.exe", "Rapat Mingguan (Saluran) | Microsoft Teams"),
+             (4, "slack.exe", "Slack | rapat | Acme")]
+    assert pick_meeting_window(chats) == 0
+    assert pick_meeting_window(chats + [(5, "slack.exe", "Huddle in #general | Slack")]) == 5
+    assert pick_meeting_window([(6, "ms-teams.exe", "Meeting with Sari | Microsoft Teams")]) == 6
+
+
+def test_qa_prompt_flags_ai_suggestions():
+    assert "Saran tindak lanjut (AI)" in meetings.qa_prompt() and "not decisions" in meetings.qa_prompt()

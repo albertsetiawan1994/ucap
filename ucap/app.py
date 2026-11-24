@@ -478,10 +478,12 @@ class UcapApp:
         self._meeting_changed()
 
     def _on_meeting_hotkey(self) -> None:
-        if not self._hotkey_paused:  # not while the user is recording a new hotkey
-            self.meeting_toggle()
-            if self.meet and self.meet.state == "processing":
-                self.pill.show_message(self.t("meet_stopping"), error=False, ms=2000)
+        if self._hotkey_paused:  # the user is recording a new hotkey
+            return
+        was_recording = self.meet is not None and self.meet.state == "recording"
+        self.meeting_toggle()
+        if was_recording:
+            self.pill.show_message(self.t("meet_stopping"), error=False, ms=2000)
 
     def meeting_retry(self) -> None:
         if self.meet:

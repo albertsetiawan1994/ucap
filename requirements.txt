@@ -1,0 +1,10 @@
+PySide6-Essentials>=6.6
+sounddevice>=0.4.6
+numpy>=1.26
+keyboard>=0.13.5
+google-genai>=1.0
+keyring>=24
+pywin32>=306
+psutil>=5.9
+tzdata>=2024.1
+PyAudioWPatch>=0.2.12

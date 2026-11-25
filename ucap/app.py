@@ -21,6 +21,9 @@ from .styles import foreground_app, is_code_editor, style_for_app, window_title
 from .ui import theme
 
 
+STOP_TAIL_MS = 300  # keep recording a moment after release: people let go while saying the last word
+
+
 def _beep(freq: int, ms: int) -> None:
     import winsound
     threading.Thread(target=winsound.Beep, args=(freq, ms), daemon=True).start()
@@ -42,6 +45,7 @@ class UcapApp:
         self.q: queue.Queue = queue.Queue()
         self.recorder = audio.Recorder()
         self.busy = False
+        self._stopping = False
         self.target = (0, "")
         self.target_title = ""
         self._secrets: dict[str, str] = {}
@@ -222,7 +226,14 @@ class UcapApp:
             _beep(330, 90)
 
     def _on_stop(self):
-        if not self.recorder.active:
+        if not self.recorder.active or self._stopping:
+            return
+        self._stopping = True
+        QTimer.singleShot(STOP_TAIL_MS, self._finish_stop)
+
+    def _finish_stop(self):
+        self._stopping = False
+        if not self.recorder.active:  # cancelled during the tail
             return
         samples = self._end_recording()
         if not audio.is_usable(samples):  # too short or silent: ignore quietly
@@ -237,13 +248,13 @@ class UcapApp:
         style = style_for_app(self.target[1], s["app_styles"], s["default_style"])
         command = self.kind == "command"
         if command:
-            prompt = gemini_client.build_command_prompt(style, s["dictionary"])
+            prompt = gemini_client.build_command_prompt(style, s["dictionary"], s["language"])
         else:
             prompt = gemini_client.build_system_prompt(s["language"], style, s["dictionary"],
                                                        [x["trigger"] for x in s["snippets"]],
                                                        self.target_title, is_code_editor(self.target[1]),
                                                        bool(s["romanize"]))
-        wav = audio.to_wav(samples)
+        wav = audio.to_wav(audio.normalize(samples))
         if s["keep_audio"]:
             (storage.audio_dir() / time.strftime("%Y%m%d-%H%M%S.wav")).write_bytes(wav)
             storage.prune_audio()

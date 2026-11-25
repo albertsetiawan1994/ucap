@@ -106,7 +106,7 @@ class MeetingSession:
         shots, self.shots = self.shots, []
         if samples.size >= audio.SAMPLE_RATE * MIN_CHUNK_SECONDS and audio.is_usable(samples):
             idx, self.total = self.total, self.total + 1
-            self._q.put(("chunk", (idx, audio.to_wav(samples), shots)))
+            self._q.put(("chunk", (idx, audio.to_wav(audio.normalize(samples)), shots)))
 
     # ---- worker thread ----
     def _args(self):
@@ -168,7 +168,7 @@ class MeetingSession:
         if has_speech:  # all parts failed: keep the meeting for a retry instead of summarizing markers
             model, available = self._args()
             try:
-                r = gemini_client.generate(self.app.pool, model, meetings.summary_prompt(self._romanize), [text], available,
+                r = gemini_client.generate(self.app.pool, model, meetings.summary_prompt(self._romanize, self._language), [text], available,
                                            timeout_ms=meetings.CHUNK_TIMEOUT_MS, budget_s=meetings.CHUNK_BUDGET_S)
                 summary = r["text"]
             except UcapError:

@@ -11,7 +11,9 @@ from .errors import UcapError
 
 SAMPLE_RATE = 16000
 MIN_SECONDS = 0.3
-SILENCE_RMS = 120  # int16 RMS; quieter than this over the whole clip counts as silence
+SILENCE_RMS = 70  # int16 RMS of the loudest 100 ms; below this the clip counts as silence (soft speech is ~100+)
+TARGET_PEAK = 0.7 * 32767
+MAX_GAIN = 8.0  # more than this mostly amplifies room noise
 
 
 def to_wav(samples: np.ndarray, rate: int = SAMPLE_RATE) -> bytes:
@@ -22,6 +24,17 @@ def to_wav(samples: np.ndarray, rate: int = SAMPLE_RATE) -> bytes:
         w.setframerate(rate)
         w.writeframes(samples.astype(np.int16).tobytes())
     return buf.getvalue()
+
+
+def normalize(samples: np.ndarray) -> np.ndarray:
+    """Raise quiet recordings so soft words are not skipped; loud ones are left alone."""
+    if samples.size == 0:
+        return samples
+    peak = float(np.percentile(np.abs(samples.astype(np.int32)), 99.9))  # ignores a single click
+    gain = min(MAX_GAIN, TARGET_PEAK / peak) if peak > 0 else 1.0
+    if gain <= 1.0:
+        return samples
+    return np.clip(samples.astype(np.float32) * gain, -32768, 32767).astype(np.int16)
 
 
 def rms(samples: np.ndarray) -> float:

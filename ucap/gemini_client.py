@@ -8,6 +8,15 @@ import time
 from .errors import UcapError
 from .styles import STYLE_RULES
 
+MEDAN_WORDS = ("gua (I), lu (you), i (he/she), ai (want), mai (don't), bo (no/not), u (have), khi (go), "
+               "lai (come), ciak (eat), kong (say), cai (know), simi (what), kamsia (thank you), paiseh (sorry), "
+               "lui (money)")
+HOKKIEN_LANGS = ("nan", "nan_mdn")
+HOKKIEN_MEANING = ("The text may contain Hokkien (Medan Hokkien is written in Latin chat spelling, e.g. "
+                   + MEDAN_WORDS + "). Hokkien words keep their Hokkien meaning: never read them as a "
+                   "similar-looking Indonesian, Malay or English word. When translating, translate by that meaning; "
+                   "if you are not sure what a Hokkien word means, keep it unchanged instead of guessing.")
+
 LANGUAGE_RULES = {
     "auto": "The speaker may use any language, most often Indonesian and English, and may switch languages "
             "mid-sentence (code-switching), including Chinese languages such as Mandarin and Hokkien. Transcribe "
@@ -20,9 +29,7 @@ LANGUAGE_RULES = {
            "Hokkien into Mandarin or Indonesian.",
     "nan_mdn": "The speaker uses Medan Hokkien (spoken in Medan, North Sumatra; close to Penang Hokkien), freely "
                "mixed with Indonesian, English and some Malay inside one sentence. Write Hokkien words in the "
-               "informal Latin spelling Medan people use in chat, without tone marks, e.g. gua (I), lu (you), "
-               "i (he/she), ai (want), mai (don't), bo (no/not), u (have), khi (go), lai (come), ciak (eat), "
-               "kong (say), cai (know), simi (what), kamsia (thank you), paiseh (sorry), lui (money). Indonesian "
+               "informal Latin spelling Medan people use in chat, without tone marks, e.g. " + MEDAN_WORDS + ". Indonesian "
                "and English words keep their normal spelling. Never write Chinese characters, never translate, and "
                "never replace a Hokkien word with an Indonesian or English word that only sounds similar.",
     "id": "The speaker uses Indonesian (English terms may appear and stay in English). Never translate.",
@@ -67,7 +74,9 @@ def build_system_prompt(language: str = "auto", style: str = "casual",
         "Rules:",
         "1. " + language_rule(language),
         "2. Remove filler words and hesitations such as: eh, em, emm, hmm, anu, apa namanya, gitu loh (when "
-        "filler), um, uh, er, like (when filler), you know, I mean (when filler).",
+        "filler), um, uh, er, like (when filler), you know, I mean (when filler). Remove only hesitations: keep "
+        "every real word, including particles such as lah, la, lo, leh, meh, sia, ah, deh, dong, sih, kok, nih. "
+        "Never drop words: quiet, fast or unclear words must still be written, as your best guess.",
         "3. Add correct punctuation and capitalization.",
         "4. Apply spoken self-corrections: keep only the corrected version. Examples: 'jam 5... eh maksudnya "
         "jam 6' -> 'jam 6'; 'let's meet at 5, actually 6pm' -> 'let's meet at 6pm'; 'kirim ke Budi, eh "
@@ -107,7 +116,7 @@ def build_system_prompt(language: str = "auto", style: str = "casual",
     return "\n".join(lines)
 
 
-def build_command_prompt(style: str = "casual", dictionary: list[str] | None = None) -> str:
+def build_command_prompt(style: str = "casual", dictionary: list[str] | None = None, language: str = "auto") -> str:
     """Voice edit: the audio is an instruction, applied to the text the user selected."""
     lines = [
         "You are a voice-controlled text editor. You receive an audio recording of a spoken instruction and a "
@@ -126,6 +135,8 @@ def build_command_prompt(style: str = "casual", dictionary: list[str] | None = N
     if words:
         lines += ["", "Personal dictionary - spell these names/terms exactly like this:"]
         lines += [f"- {w}" for w in words]
+    if language in HOKKIEN_LANGS:
+        lines += ["", HOKKIEN_MEANING]
     return "\n".join(lines)
 
 

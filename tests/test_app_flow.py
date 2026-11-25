@@ -89,3 +89,23 @@ def test_meeting_hotkey_message_only_when_it_stopped_a_recording(app, monkeypatc
     app.meet = SimpleNamespace(state="recording")
     app._on_meeting_hotkey()
     assert shown == [app.t("meet_stopping")]
+
+
+def test_recording_continues_briefly_after_release(app):
+    import numpy as np
+    from types import SimpleNamespace
+    rec = SimpleNamespace(active=True, stopped=False)
+
+    def stop():
+        rec.active, rec.stopped = False, True
+        return np.zeros(10, np.int16)
+
+    rec.stop = stop
+    app.recorder = rec
+    app._on_stop()
+    assert rec.active and not rec.stopped                     # the last syllable is still being recorded
+    app._finish_stop()
+    assert rec.stopped
+    rec.active, rec.stopped = False, False
+    app._finish_stop()                                        # cancelled during the tail: nothing happens
+    assert not rec.stopped

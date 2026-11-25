@@ -323,3 +323,32 @@ def test_medan_hokkien_is_latin_and_mixed():
     assert "Medan" in meetings.transcribe_prompt("nan_mdn")
     from ucap.ui.settings_window import LANGS
     assert LANGS.index("nan_mdn") == LANGS.index("nan") + 1
+
+
+# ---- dropped / quiet words, Hokkien meaning ----
+def test_quiet_audio_is_boosted_but_loud_audio_untouched():
+    import numpy as np
+    from ucap import audio
+    rng = np.random.default_rng(1)
+    quiet = (rng.standard_normal(audio.SAMPLE_RATE) * 400).astype(np.int16)
+    boosted = audio.normalize(quiet)
+    assert boosted.dtype == np.int16 and np.abs(boosted).max() > 3 * np.abs(quiet).max()
+    assert np.abs(boosted.astype(np.int32)).max() <= 32767
+    loud = (rng.standard_normal(audio.SAMPLE_RATE) * 9000).astype(np.int16)
+    assert np.array_equal(audio.normalize(loud), loud)                  # never turned down
+    assert audio.normalize(np.zeros(10, np.int16)).tolist() == [0] * 10
+    assert audio.is_usable(quiet)                                      # soft speech is not thrown away
+
+
+def test_prompts_never_drop_words_and_keep_particles():
+    p = gc.build_system_prompt("auto", "casual")
+    assert "Never drop words" in p and "lah" in p and "best guess" in p
+    assert "Never drop words" in meetings.transcribe_prompt("auto")
+
+
+def test_hokkien_meaning_hint_in_edits_and_notes():
+    c = gc.build_command_prompt("casual", [], "nan_mdn")
+    assert "gua (I)" in c and "similar-looking" in c
+    assert "gua (I)" not in gc.build_command_prompt("casual", [], "id")
+    assert "gua (I)" in meetings.summary_prompt(language="nan_mdn")
+    assert "gua (I)" not in meetings.summary_prompt()

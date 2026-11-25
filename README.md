@@ -18,6 +18,9 @@ Suara Anda dikirim **sekali** ke Gemini API (Google), yang mengubahnya menjadi t
 - **Bar melayang** kecil di tengah bawah layar aktif: gelombang suara langsung, lalu status "Memproses".
   Bar ini tidak pernah mengambil fokus dari aplikasi Anda.
 - Rekaman lebih pendek dari ±0,3 detik atau yang hening diabaikan.
+- Rekaman tetap berjalan ±0,3 detik setelah tombol dilepas, supaya kata terakhir tidak terpotong.
+- Suara yang pelan dikeraskan otomatis (hingga 8×) sebelum dikirim, supaya kata yang diucapkan pelan tidak
+  terlewat. Kata yang kurang jelas tetap ditulis sebagai tebakan terbaik, bukan dibuang.
 
 **Pembersihan otomatis oleh Gemini**
 - Transkripsi sesuai bahasa yang diucapkan, termasuk campuran dalam satu kalimat (Otomatis), atau pilih salah satu

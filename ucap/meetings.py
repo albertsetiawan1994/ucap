@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 
 from . import storage
-from .gemini_client import ROMANIZE_RULE, language_rule
+from .gemini_client import HOKKIEN_LANGS, HOKKIEN_MEANING, ROMANIZE_RULE, language_rule
 
 CHUNK_SECONDS = 300          # 5 min of 16 kHz WAV is ~9.6 MB, well under the 20 MB request limit
 CHUNK_TIMEOUT_MS = 120_000   # long audio takes longer than a dictation
@@ -65,7 +65,9 @@ def transcribe_prompt(language: str = "auto", dictionary: list[str] | None = Non
                       romanize: bool = False) -> str:
     lines = ["You transcribe a recording of a meeting. Return ONLY the transcript.",
              "", "Rules:", "1. " + _lang(language),
-             "2. Write complete sentences with punctuation. Drop filler words (eh, em, um, uh).",
+             "2. Write complete sentences with punctuation. Drop filler words (eh, em, um, uh) but keep "
+             "particles such as lah, la, lo, leh, meh, sia. Never drop words: quiet or unclear words must still be "
+             "written, as your best guess.",
              "3. Start a new line whenever the speaker changes, as 'Name: text'. Use a real name only when "
              "there is a cue: a self-introduction ('saya Andi dari tim IT', 'this is Sarah'), being addressed or "
              "given the floor ('silakan Pak Budi', 'thanks, Sarah, go ahead' -> the next speaker is that person), "
@@ -110,7 +112,7 @@ def extract_speakers(text: str) -> list[str]:
     return out
 
 
-def summary_prompt(romanize: bool = False) -> str:
+def summary_prompt(romanize: bool = False, language: str = "auto") -> str:
     return "\n".join([
         "You write meeting notes (notulen) from a transcript. Write in the main language of the transcript.",
         "Use exactly this markdown layout:",
@@ -126,7 +128,7 @@ def summary_prompt(romanize: bool = False) -> str:
         "Except for the AI suggestion section, only use facts from the transcript. Never invent names, numbers or "
         "deadlines. Keep the suggestions clearly separate from decisions and action items. "
         "Some parts may be marked as missing; mention that in the summary if so.",
-    ] + ([ROMANIZE_RULE] if romanize else []))
+    ] + ([ROMANIZE_RULE] if romanize else []) + ([HOKKIEN_MEANING] if language in HOKKIEN_LANGS else []))
 
 
 def qa_prompt() -> str:

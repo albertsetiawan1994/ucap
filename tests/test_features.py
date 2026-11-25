@@ -311,3 +311,5 @@ def test_count_words_handles_scripts_without_spaces():
     assert count_words("今日は雨です (Kyō wa ame desu)") == 6
     assert count_words("Rapat jam 5 (lihat lampiran)") == 5              # normal parentheses still count
     assert count_words("") == 0
+    assert count_words("Привет всем. (Privet vsem.)") == 2              # period before the bracket
+    assert count_words("我们明天开会. (Wǒmen míngtiān kāihuì.)") == 6

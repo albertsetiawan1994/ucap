@@ -12,13 +12,14 @@ def _tokens(text: str) -> list[str]:
 
 # Han, kana and Thai are written without spaces between words: count each character instead.
 _NO_SPACE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u0e00-\u0e7f]")
-# Romanization Ucap adds after non-Latin text, e.g. "开会。(kāihuì.)": the same words again, so not counted.
-_ROMANIZED = re.compile(r"(?<=[^\x00-\u024f\u1e00-\u1eff\s])\s*\([^()]*\)")
+# Romanization Ucap adds after non-Latin text, e.g. "开会。(kāihuì.)" or "всем. (vsem.)": the same words
+# again, so not counted. One plain punctuation mark may sit between the text and the bracket.
+_ROMANIZED = re.compile(r"([^\x00-\u024f\u1e00-\u1eff\s][.!?,;:]?)\s*\([^()]*\)")
 
 
 def count_words(text: str) -> int:
     """Words for the statistics; Chinese/Japanese/Thai count per character (shortcut: Thai is over-counted)."""
-    text = _ROMANIZED.sub(" ", text or "")
+    text = _ROMANIZED.sub(r"\1 ", text or "")
     return len(_NO_SPACE.findall(text)) + len(_WORD.findall(_NO_SPACE.sub(" ", text)))
 
 

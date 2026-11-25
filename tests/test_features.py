@@ -207,7 +207,7 @@ def test_suggest_terms_ignores_sentence_starts_and_known():
 def test_language_rule_covers_more_languages():
     assert "uses Japanese" in gc.build_system_prompt("ja", "casual")
     assert "uses Indonesian" in gc.build_system_prompt("id", "casual")
-    assert "mix of both" in gc.build_system_prompt("zz", "casual")
+    assert "code-switching" in gc.build_system_prompt("zz", "casual")
 
 
 # ---- window context / code editors ----
@@ -285,3 +285,29 @@ def test_pick_meeting_window_whole_words_only():
 
 def test_qa_prompt_flags_ai_suggestions():
     assert "Saran tindak lanjut (AI)" in meetings.qa_prompt() and "not decisions" in meetings.qa_prompt()
+
+
+# ---- Hokkien, mixed languages, romanization ----
+def test_hokkien_and_mixed_language_rules():
+    p = gc.build_system_prompt("nan", "casual")
+    assert "Hokkien" in p and "Never translate" in p and "Chinese characters" in p
+    auto = gc.build_system_prompt("auto", "casual")
+    assert "code-switching" in auto and "own script" in auto and "Hokkien" in auto
+    assert "other languages stay" in gc.build_system_prompt("ja", "casual")
+
+
+def test_romanization_rule_only_when_on():
+    on = gc.build_system_prompt("auto", "casual", romanize=True)
+    assert "Pinyin" in on and "Pe̍h-ōe-jī" in on and "(Wǒmen" in on
+    assert "Pinyin" not in gc.build_system_prompt("auto", "casual")
+    assert "Pinyin" in meetings.transcribe_prompt("zh", romanize=True)
+    assert "Pinyin" in meetings.summary_prompt(romanize=True) and "Pinyin" not in meetings.summary_prompt()
+
+
+def test_count_words_handles_scripts_without_spaces():
+    from ucap.snippets import count_words
+    assert count_words("Halo semua, apa kabar?") == 4
+    assert count_words("我们明天开会。(Wǒmen míngtiān kāihuì.)") == 6      # 6 hanzi; romanization not counted twice
+    assert count_words("今日は雨です (Kyō wa ame desu)") == 6
+    assert count_words("Rapat jam 5 (lihat lampiran)") == 5              # normal parentheses still count
+    assert count_words("") == 0

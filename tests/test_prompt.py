@@ -20,7 +20,7 @@ def test_prompt_language_and_style_switch():
     assert "Very casual:" in gc.build_system_prompt("auto", "very_casual")
     # unknown values fall back instead of crashing
     p = gc.build_system_prompt("xx", "weird")
-    assert "Indonesian, English, or a mix" in p and "Casual:" in p
+    assert "code-switching" in p and "Casual:" in p
 
 
 def test_prompt_dictionary_and_triggers():

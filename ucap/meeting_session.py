@@ -37,6 +37,7 @@ class MeetingSession:
         self._q: queue.Queue = queue.Queue()
         s = app.settings
         self._language, self._dictionary = s["language"], list(s["dictionary"])
+        self._romanize = bool(s["romanize"])
 
     # ---- GUI thread ----
     def start(self, device) -> None:
@@ -114,7 +115,8 @@ class MeetingSession:
 
     def _transcribe(self, idx: int, wav: bytes, shots: list) -> None:
         model, available = self._args()
-        prompt = meetings.transcribe_prompt(self._language, self._dictionary, self.speakers, bool(shots))
+        prompt = meetings.transcribe_prompt(self._language, self._dictionary, self.speakers, bool(shots),
+                                            self._romanize)
         try:
             r = gemini_client.transcribe(
                 wav, self.app.pool, model, prompt, available,
@@ -166,7 +168,7 @@ class MeetingSession:
         if has_speech:  # all parts failed: keep the meeting for a retry instead of summarizing markers
             model, available = self._args()
             try:
-                r = gemini_client.generate(self.app.pool, model, meetings.summary_prompt(), [text], available,
+                r = gemini_client.generate(self.app.pool, model, meetings.summary_prompt(self._romanize), [text], available,
                                            timeout_ms=meetings.CHUNK_TIMEOUT_MS, budget_s=meetings.CHUNK_BUDGET_S)
                 summary = r["text"]
             except UcapError:

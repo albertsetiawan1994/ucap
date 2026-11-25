@@ -22,6 +22,7 @@ DEFAULT_SETTINGS = {
     "paste_hotkey": "alt+shift+z",  # paste the last dictation again
     "meeting_hotkey": "alt+shift+m",  # start / stop a meeting recording
     "check_updates": True,  # ask GitHub Releases once per start (see updater.UPDATE_REPO)
+    "romanize": True,  # non-Latin text gets its romanization in parentheses (pinyin, POJ, romaji, ...)
     "use_window_title": True,  # send the target window title as a spelling hint
     "voice_send": False,  # off by default: a trailing "tekan enter" / "press enter" presses Enter after pasting
     "mic_device": None,  # None = Windows default input
@@ -160,7 +161,7 @@ class Stats:
 
 
 # Settings that move between PCs; API keys and the cached model list never leave Credential Manager / this PC.
-EXPORT_KEYS = ("hotkey", "command_hotkey", "paste_hotkey", "meeting_hotkey", "voice_send", "use_window_title", "language", "model", "dictionary",
+EXPORT_KEYS = ("hotkey", "command_hotkey", "paste_hotkey", "meeting_hotkey", "voice_send", "use_window_title", "romanize", "language", "model", "dictionary",
                "snippets", "app_styles", "default_style", "sound_cues", "ui_lang")
 
 

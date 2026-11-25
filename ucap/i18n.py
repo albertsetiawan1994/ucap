@@ -105,6 +105,7 @@ STRINGS = {
         "meet_screen_speakers": "Kenali pembicara dari layar rapat",
         "sec_recording": "Perekaman", "sec_backup": "Cadangan pengaturan",
         "meet_rec_title": "Rekam rapat", "meet_list_title": "Notulen tersimpan",
+        "romanize": "Tulis juga ejaan Latin untuk aksara non-Latin, mis. 我们 (wǒmen)",
         "title_input": "Ucap",
     },
     "en": {
@@ -211,6 +212,7 @@ STRINGS = {
         "meet_screen_speakers": "Recognise speakers from the meeting screen",
         "sec_recording": "Recording", "sec_backup": "Settings backup",
         "meet_rec_title": "Record a meeting", "meet_list_title": "Saved notes",
+        "romanize": "Add Latin spelling to non-Latin scripts, e.g. 我们 (wǒmen)",
         "title_input": "Ucap",
     },
 }

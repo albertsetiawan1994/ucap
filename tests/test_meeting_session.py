@@ -13,7 +13,7 @@ SPEECH = (np.random.default_rng(0).standard_normal(audio.SAMPLE_RATE * 2) * 3000
 
 class FakeApp:
     def __init__(self, tmp_path):
-        self.settings = {"language": "auto", "dictionary": [], "model": "m", "model_list": []}
+        self.settings = {"language": "auto", "dictionary": [], "model": "m", "model_list": [], "romanize": True}
         self.meetings = meetings.MeetingStore(tmp_path / "m.json")
         self.pool = object()
         self.events = []

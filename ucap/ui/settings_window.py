@@ -419,7 +419,7 @@ class SettingsWindow(QWidget):
         rec.addLayout(g)
 
         opts = _card(self._page_lay, self.t("sec_options"))
-        for key, label in (("sound_cues", "sound_cues"), ("voice_send", "voice_send"), ("use_window_title", "use_window_title"),
+        for key, label in (("sound_cues", "sound_cues"), ("voice_send", "voice_send"), ("use_window_title", "use_window_title"), ("romanize", "romanize"),
                            ("check_updates", "check_updates"),
                            ("start_with_windows", "autostart"), ("keep_audio", "keep_audio")):
             cb = QCheckBox(self.t(label))

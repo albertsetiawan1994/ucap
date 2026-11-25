@@ -16,7 +16,7 @@ from .errors import UcapError
 from .hotkey import HotkeyListener, HotkeyMachine, combos_conflict
 from .keypool import MAX_KEYS, KeyPool
 from .meeting_session import MeetingSession
-from .snippets import clean_output, expand_snippets
+from .snippets import clean_output, count_words, expand_snippets
 from .styles import foreground_app, is_code_editor, style_for_app, window_title
 from .ui import theme
 
@@ -241,7 +241,8 @@ class UcapApp:
         else:
             prompt = gemini_client.build_system_prompt(s["language"], style, s["dictionary"],
                                                        [x["trigger"] for x in s["snippets"]],
-                                                       self.target_title, is_code_editor(self.target[1]))
+                                                       self.target_title, is_code_editor(self.target[1]),
+                                                       bool(s["romanize"]))
         wav = audio.to_wav(samples)
         if s["keep_audio"]:
             (storage.audio_dir() / time.strftime("%Y%m%d-%H%M%S.wav")).write_bytes(wav)
@@ -283,7 +284,7 @@ class UcapApp:
                 return
             if text:
                 self.history.add(text, job["target"][1], r["model"], r["label"])
-                self.stats.add(len(text.split()), job.get("secs", 0))
+                self.stats.add(count_words(text), job.get("secs", 0))
             if refocus and job["target"][0]:
                 ctypes.windll.user32.SetForegroundWindow(job["target"][0])  # tray menu took focus
                 time.sleep(0.15)

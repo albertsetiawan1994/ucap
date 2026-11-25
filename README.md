@@ -20,7 +20,11 @@ Suara Anda dikirim **sekali** ke Gemini API (Google), yang mengubahnya menjadi t
 - Rekaman lebih pendek dari ±0,3 detik atau yang hening diabaikan.
 
 **Pembersihan otomatis oleh Gemini**
-- Transkripsi sesuai bahasa yang diucapkan: Indonesia, Inggris, atau campuran (pilihan: Otomatis / Indonesia / English).
+- Transkripsi sesuai bahasa yang diucapkan, termasuk campuran dalam satu kalimat (Otomatis), atau pilih salah satu
+  dari 21 bahasa, termasuk **Hokkien** (ditulis dengan aksara Han; kata tanpa aksara umum ditulis dalam Pe̍h-ōe-jī).
+- Aksara non-Latin diberi ejaan Latin dalam kurung: Mandarin → Pinyin, Hokkien → Pe̍h-ōe-jī, Jepang → romaji,
+  Korea → romanisasi, lainnya → transliterasi umum. Contoh: `我们明天开会。(Wǒmen míngtiān kāihuì.)`.
+  Bisa dimatikan di tab Umum. Berlaku juga untuk transkrip dan notulen rapat.
 - Menghapus kata pengisi: eh, em, emm, anu, apa namanya, um, uh, like.
 - Menambah tanda baca dan huruf kapital.
 - Menerapkan koreksi lisan: "jam 5... eh maksudnya jam 6" → "jam 6"; "5, actually 6pm" → "6pm".

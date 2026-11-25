@@ -11,16 +11,25 @@ from .styles import STYLE_RULES
 LANGUAGE_RULES = {
     "auto": "The speaker may use any language, most often Indonesian and English, and may switch languages "
             "mid-sentence (code-switching), including Chinese languages such as Mandarin and Hokkien. Transcribe "
-            "each part in the language it was spoken, in that language's own script; never translate.",
+            "each part in the language it was spoken, in that language's own script; never translate. Hokkien as "
+            "spoken in Indonesia (e.g. Medan) is written in the informal Latin spelling people use in chat "
+            "(gua, lu, kamsia, paiseh), not in Chinese characters.",
     "nan": "The speaker uses Hokkien (Min Nan), often mixed with Indonesian or Mandarin. Write Hokkien in Chinese "
            "characters as used for Taiwanese Hokkien; for a Hokkien word with no common character, write its "
            "Pe̍h-ōe-jī romanization instead. Indonesian and Mandarin parts stay as spoken. Never translate "
            "Hokkien into Mandarin or Indonesian.",
+    "nan_mdn": "The speaker uses Medan Hokkien (spoken in Medan, North Sumatra; close to Penang Hokkien), freely "
+               "mixed with Indonesian, English and some Malay inside one sentence. Write Hokkien words in the "
+               "informal Latin spelling Medan people use in chat, without tone marks, e.g. gua (I), lu (you), "
+               "i (he/she), ai (want), mai (don't), bo (no/not), u (have), khi (go), lai (come), ciak (eat), "
+               "kong (say), cai (know), simi (what), kamsia (thank you), paiseh (sorry), lui (money). Indonesian "
+               "and English words keep their normal spelling. Never write Chinese characters, never translate, and "
+               "never replace a Hokkien word with an Indonesian or English word that only sounds similar.",
     "id": "The speaker uses Indonesian (English terms may appear and stay in English). Never translate.",
     "en": "The speaker uses English. Never translate.",
 }
 
-LANGUAGE_NAMES = {"nan": "Hokkien", "ms": "Malay", "jv": "Javanese", "su": "Sundanese", "zh": "Chinese", "ja": "Japanese",
+LANGUAGE_NAMES = {"nan": "Hokkien (aksara Han)", "nan_mdn": "Hokkien Medan", "ms": "Malay", "jv": "Javanese", "su": "Sundanese", "zh": "Chinese", "ja": "Japanese",
                   "ko": "Korean", "es": "Spanish", "fr": "French", "de": "German", "pt": "Portuguese",
                   "ru": "Russian", "ar": "Arabic", "hi": "Hindi", "nl": "Dutch", "tr": "Turkish", "th": "Thai",
                   "vi": "Vietnamese"}

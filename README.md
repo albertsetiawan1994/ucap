@@ -21,7 +21,9 @@ Suara Anda dikirim **sekali** ke Gemini API (Google), yang mengubahnya menjadi t
 
 **Pembersihan otomatis oleh Gemini**
 - Transkripsi sesuai bahasa yang diucapkan, termasuk campuran dalam satu kalimat (Otomatis), atau pilih salah satu
-  dari 21 bahasa, termasuk **Hokkien** (ditulis dengan aksara Han; kata tanpa aksara umum ditulis dalam Pe̍h-ōe-jī).
+  dari 21 bahasa, termasuk **Hokkien Medan** (campur Indonesia/Inggris, ditulis dengan ejaan Latin gaya chat
+  Medan: `Gua ai khi pasar, lu mau ikut bo?`) dan **Hokkien (aksara Han)** (kata tanpa aksara umum ditulis dalam
+  Pe̍h-ōe-jī). Mode Otomatis juga menulis Hokkien Indonesia dengan ejaan Latin.
 - Aksara non-Latin diberi ejaan Latin dalam kurung: Mandarin → Pinyin, Hokkien → Pe̍h-ōe-jī, Jepang → romaji,
   Korea → romanisasi, lainnya → transliterasi umum. Contoh: `我们明天开会。(Wǒmen míngtiān kāihuì.)`.
   Bisa dimatikan di tab Umum. Berlaku juga untuk transkrip dan notulen rapat.

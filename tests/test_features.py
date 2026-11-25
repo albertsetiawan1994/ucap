@@ -313,3 +313,13 @@ def test_count_words_handles_scripts_without_spaces():
     assert count_words("") == 0
     assert count_words("Привет всем. (Privet vsem.)") == 2              # period before the bracket
     assert count_words("我们明天开会. (Wǒmen míngtiān kāihuì.)") == 6
+
+
+def test_medan_hokkien_is_latin_and_mixed():
+    p = gc.build_system_prompt("nan_mdn", "casual")
+    assert "Medan" in p and "Penang" in p and "Never write Chinese characters" in p
+    assert "kamsia" in p and "Indonesian and English words keep" in p
+    assert "Medan" in gc.build_system_prompt("auto", "casual")          # auto also writes Indonesian Hokkien in Latin
+    assert "Medan" in meetings.transcribe_prompt("nan_mdn")
+    from ucap.ui.settings_window import LANGS
+    assert LANGS.index("nan_mdn") == LANGS.index("nan") + 1

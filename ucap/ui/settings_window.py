@@ -6,9 +6,9 @@ import threading
 import time
 
 from PySide6.QtCore import QPoint, QRect, QRectF, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLayout,
-                               QInputDialog, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
+from PySide6.QtGui import QColor, QFont, QPainter, QTextBlockFormat, QTextCharFormat, QTextCursor, QTextFormat
+from PySide6.QtWidgets import (QAbstractItemView, QBoxLayout, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLayout,
+                               QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
                                QListWidget, QListWidgetItem, QScrollArea, QStackedWidget, QTableWidget, QTableWidgetItem,
                                QTextEdit, QVBoxLayout, QWidget)
 
@@ -26,6 +26,7 @@ TABS = ("general", "gemini", "dict", "snippets", "styles", "history", "meetings"
 # Segoe Fluent Icons / MDL2 code points: Settings, Permissions (key), Dictionary, Paste, Font, History, People, Chart
 GLYPHS = dict(zip(TABS, ("", "", "", "", "", "", "", "")))
 COMPACT_WIDTH = 860  # narrower windows get an icon-only sidebar
+SPLIT_WIDTH = 1180  # wider windows show the meeting list and the reading panel side by side
 PAGE_MAX_WIDTH = 980
 
 
@@ -182,6 +183,37 @@ def _sel(table):
     return rows[0].row() if rows else None
 
 
+def _render_notes(edit, md):
+    """Meeting notes as readable rich text: calm heading sizes, airy lines, AI suggestions on a tinted band."""
+    edit.setMarkdown(md)
+    doc = edit.document()
+    cur = QTextCursor(doc)
+    block, in_ai = doc.begin(), False
+    while block.isValid():
+        level = block.blockFormat().headingLevel()
+        bf = QTextBlockFormat()
+        bf.setLineHeight(135, 1)  # 1 = proportional
+        bf.setBottomMargin(4)
+        cur.setPosition(block.position())
+        cur.setPosition(block.position() + max(0, block.length() - 1), QTextCursor.KeepAnchor)
+        if level:
+            in_ai = "(ai)" in block.text().lower()
+            cf = QTextCharFormat()
+            cf.setProperty(QTextFormat.FontSizeAdjustment, 0)  # markdown headings scale up on their own
+            cf.setFontPointSize(14 if level == 1 else 12)
+            cf.setFontWeight(QFont.Bold)
+            cf.setForeground(QColor(th.TEXT if level == 1 else th.ACCENT_DARK))
+            cur.mergeCharFormat(cf)
+            bf.setLineHeight(110, 1)
+            bf.setTopMargin(4 if level == 1 else 14)
+            bf.setBottomMargin(6)
+        elif in_ai and block.text().strip():
+            bf.setBackground(QColor(th.ACCENT_SOFT))
+        cur.mergeBlockFormat(bf)
+        block = block.next()
+    edit.moveCursor(QTextCursor.Start)
+
+
 def _card(page_lay, title=None, stretch=0):
     """A white rounded section on the page; returns its inner layout."""
     card = QFrame()
@@ -232,6 +264,11 @@ class SettingsWindow(QWidget):
         self._apply_compact()
 
     def _apply_compact(self):
+        try:  # meetings: list beside the reading panel on wide windows, above it on narrow ones
+            self.meet_split.setDirection(QBoxLayout.LeftToRight if self.width() >= SPLIT_WIDTH
+                                         else QBoxLayout.TopToBottom)
+        except (RuntimeError, AttributeError):
+            pass
         compact = self.width() < COMPACT_WIDTH
         self.side.setFixedWidth(76 if compact else 224)
         for w in (self.brand_text, self.seg, self.version):
@@ -948,7 +985,13 @@ class SettingsWindow(QWidget):
         self.meet_bar.hide()
         lay.addWidget(self.meet_bar)
 
-        lay = _card(self._page_lay, self.t("meet_list_title"), stretch=1)
+        holder = QWidget()
+        self.meet_split = QBoxLayout(QBoxLayout.LeftToRight, holder)
+        self.meet_split.setContentsMargins(0, 0, 0, 0)
+        self.meet_split.setSpacing(14)
+        self._page_lay.addWidget(holder, 1)
+
+        lay = _card(self.meet_split, self.t("meet_list_title"), stretch=2)
         self.meet_filter = QLineEdit()
         self.meet_filter.setPlaceholderText(self.t("meet_search_ph"))
         self.meet_filter.setClearButtonEnabled(True)
@@ -960,44 +1003,105 @@ class SettingsWindow(QWidget):
         hdr.setSectionResizeMode(0, QHeaderView.Stretch)
         for c in (1, 2):
             hdr.setSectionResizeMode(c, QHeaderView.ResizeToContents)
-        table.setMinimumHeight(150)
+        table.setMinimumHeight(170)
         self.meet_table = table
         self._meet_rows = []
         lay.addWidget(table, 1)
+
+        lay = _card(self.meet_split, stretch=3)
+        top = QHBoxLayout()
+        top.setSpacing(6)
+        self._meet_btns = {}
+        group = QButtonGroup(self)
+        for view in ("notes", "transcript", "ask"):
+            b = _button(self.t(f"meet_{view}" if view != "ask" else "meet_tab_ask"),
+                        slot=lambda _=False, v=view: self._meet_show(v))
+            b.setObjectName("SegTab")
+            b.setCheckable(True)
+            group.addButton(b)
+            self._meet_btns[view] = b
+            top.addWidget(b)
+        top.addStretch()
+        more = _button(self.t("meet_more"))
+        menu = QMenu(more)
+        menu.addAction(self.t("meet_rename"), self._meet_rename)
+        menu.addAction(self.t("meet_copy"), self._meet_copy)
+        menu.addAction(self.t("meet_export"), self._meet_export)
+        menu.addSeparator()
+        menu.addAction(self.t("meet_delete"), self._meet_delete)
+        more.setMenu(menu)
+        top.addWidget(more)
+        lay.addLayout(top)
+
+        self.meet_stack = QStackedWidget()
         detail = QTextEdit()
         detail.setReadOnly(True)
         self.meet_detail = detail
-        btns = _Flow()
-        self._meet_btns = {}
-        for view in ("notes", "transcript"):
-            b = _button(self.t(f"meet_{view}"), slot=lambda _=False, v=view: self._meet_show(v))
-            b.setCheckable(True)
-            self._meet_btns[view] = b
-            btns.addWidget(b)
-        btns.addWidget(_button(self.t("meet_rename"), slot=self._meet_rename))
-        btns.addWidget(_button(self.t("meet_copy"), slot=self._meet_copy))
-        btns.addWidget(_button(self.t("meet_export"), slot=self._meet_export))
-        btns.addWidget(_button(self.t("meet_delete"), slot=self._meet_delete))
-        lay.addLayout(btns)
-        detail.setMinimumHeight(160)
-        lay.addWidget(detail, 2)
+        self.meet_stack.addWidget(detail)
+        self.meet_stack.addWidget(self._chat_panel())
+        self.meet_stack.setMinimumHeight(380)
+        lay.addWidget(self.meet_stack, 1)
         table.itemSelectionChanged.connect(lambda: self._meet_show(self._meet_view))
+        self.refresh_meetings_list()
+        self.refresh_meeting()
 
-        lay = _card(self._page_lay, self.t("meet_ask_title"))
-        ask = QHBoxLayout()
+    # ---- meeting Q&A as a chat ----
+    def _chat_panel(self):
+        panel = QWidget()
+        v = QVBoxLayout(panel)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(10)
+        self.chat_scroll = QScrollArea()
+        self.chat_scroll.setWidgetResizable(True)
+        self.chat_scroll.setFrameShape(QFrame.NoFrame)
+        self.chat_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        inner = QWidget()
+        inner.setObjectName("Inner")
+        self.chat_lay = QVBoxLayout(inner)
+        self.chat_lay.setContentsMargins(0, 0, 6, 0)
+        self.chat_lay.setSpacing(10)
+        self.chat_lay.addWidget(_label(self.t("meet_ask_title") + " · " + self.t("meet_ask_ph"), "Muted", wrap=True))
+        self.chat_lay.addStretch()
+        self.chat_scroll.setWidget(inner)
+        v.addWidget(self.chat_scroll, 1)
+        row = QHBoxLayout()
+        self.meet_scope = QComboBox()
+        self.meet_scope.addItems([self.t("meet_scope_this"), self.t("meet_scope_all")])
         self.meet_q = QLineEdit()
         self.meet_q.setPlaceholderText(self.t("meet_ask_ph"))
         self.meet_ask_btn = _button(self.t("meet_ask"), True, self._meet_ask)
         self.meet_q.returnPressed.connect(self._meet_ask)
-        ask.addWidget(self.meet_q, 1)
-        ask.addWidget(self.meet_ask_btn)
-        lay.addLayout(ask)
-        self.meet_answer = QTextEdit()
-        self.meet_answer.setReadOnly(True)
-        self.meet_answer.setFixedHeight(76)
-        lay.addWidget(self.meet_answer)
-        self.refresh_meetings_list()
-        self.refresh_meeting()
+        row.addWidget(self.meet_scope)
+        row.addWidget(self.meet_q, 1)
+        row.addWidget(self.meet_ask_btn)
+        v.addLayout(row)
+        return panel
+
+    def _bubble(self, text, mine=False, markdown=False, copy=False):
+        """Adds one chat bubble (question right, answer left) and returns its row widget."""
+        frame = QFrame()
+        frame.setObjectName("BubbleMe" if mine else "BubbleAi")
+        fl = QVBoxLayout(frame)
+        fl.setContentsMargins(14, 10, 14, 10)
+        lb = QLabel(text)
+        lb.setWordWrap(True)
+        lb.setTextFormat(Qt.MarkdownText if markdown else Qt.PlainText)
+        lb.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        fl.addWidget(lb)
+        if copy:
+            fl.addWidget(_button(self.t("copy"), slot=lambda: self.app.copy_text(text)), 0, Qt.AlignRight)
+        row = QWidget()
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(0, 0, 0, 0)
+        if mine:
+            rl.addStretch(1)
+        rl.addWidget(frame, 5)
+        if not mine:
+            rl.addStretch(1)
+        self.chat_lay.insertWidget(self.chat_lay.count() - 1, row)
+        QTimer.singleShot(30, lambda: self.chat_scroll.verticalScrollBar().setValue(
+            self.chat_scroll.verticalScrollBar().maximum()))
+        return row
 
     def _meet_current(self):
         i = _sel(self.meet_table)
@@ -1005,13 +1109,15 @@ class SettingsWindow(QWidget):
 
     def _meet_show(self, view):
         self._meet_view = view
-        for k, b in self._meet_btns.items():
-            b.setChecked(k == view)
+        self._meet_btns[view].setChecked(True)
+        self.meet_stack.setCurrentIndex(1 if view == "ask" else 0)
         m = self._meet_current()
+        if view == "ask":
+            return
         if not m:
             self.meet_detail.clear()
         elif view == "notes":
-            self.meet_detail.setMarkdown(m["summary"])
+            _render_notes(self.meet_detail, meetings.clean_summary(m["summary"]))
         else:
             self.meet_detail.setPlainText(m["transcript"])
 
@@ -1048,22 +1154,29 @@ class SettingsWindow(QWidget):
 
     def _meet_ask(self):
         q = self.meet_q.text().strip()
-        if not q:
+        if not q or not self.meet_ask_btn.isEnabled():
             return
+        only = self._meet_current() if self.meet_scope.currentIndex() == 0 else None
+        self.meet_q.clear()
+        self._bubble(q, mine=True)
         if not self.app.meetings.items:
-            self.meet_answer.setPlainText(self.t("meet_no_notes"))
+            self._bubble(self.t("meet_no_notes"))
+            return
+        if self.meet_scope.currentIndex() == 0 and not only:
+            self._bubble(self.t("meet_pick_first"))
             return
         self.meet_ask_btn.setEnabled(False)
-        self.meet_answer.setPlainText(self.t("meet_asking"))
+        pending = self._bubble(self.t("meet_asking"))
 
         def done(answer, err):
             self.meet_ask_btn.setEnabled(True)
+            pending.deleteLater()
             if err is not None:
-                self.meet_answer.setPlainText(i18n.error_text(self.app.settings["ui_lang"], err))
+                self._bubble(i18n.error_text(self.app.settings["ui_lang"], err))
             else:
-                self.meet_answer.setMarkdown(answer)
+                self._bubble(answer, markdown=True, copy=True)
 
-        self.app.ask_notes(q, done)
+        self.app.ask_notes(q, done, only=only)
 
     def refresh_meetings_list(self, select=None):
         """Rebuild the list (filtered by the search box); keeps the selected meeting, or selects `select`."""

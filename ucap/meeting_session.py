@@ -170,7 +170,7 @@ class MeetingSession:
             try:
                 r = gemini_client.generate(self.app.pool, model, meetings.summary_prompt(self._romanize, self._language), [text], available,
                                            timeout_ms=meetings.CHUNK_TIMEOUT_MS, budget_s=meetings.CHUNK_BUDGET_S)
-                summary = r["text"]
+                summary = meetings.clean_summary(r["text"])
             except UcapError:
                 pass
         self.no_summary = not summary

@@ -112,23 +112,40 @@ def extract_speakers(text: str) -> list[str]:
     return out
 
 
+SECTIONS = ("Peserta", "Ringkasan", "Poin penting", "Keputusan", "Tindak lanjut", "Saran tindak lanjut (AI)")
+
+
 def summary_prompt(romanize: bool = False, language: str = "auto") -> str:
     return "\n".join([
         "You write meeting notes (notulen) from a transcript. Write in the main language of the transcript.",
-        "Use exactly this markdown layout:",
-        "# <short descriptive title>",
-        "## Peserta  (names of the identified speakers; '-' if no one was named)",
-        "## Ringkasan  (3-6 sentences)",
-        "## Poin penting  (bullets)",
-        "## Keputusan  (bullets, or '-' if none)",
-        "## Tindak lanjut  (action items agreed in the meeting as bullets: task - owner - deadline; "
-        "'-' if none)",
-        "## Saran tindak lanjut (AI)  (3-5 extra suggestions of your own that were NOT said in the meeting: "
-        "open questions to resolve, risks to check, items for the next agenda. Start each bullet with 'Saran:'.)",
+        "Use exactly these markdown headings, in this order, each alone on its own line:",
+        "# <a short descriptive title>",
+        *(f"## {h}" for h in SECTIONS),
+        "What goes under each heading:",
+        "- Peserta: names of the identified speakers, or '-' if no one was named.",
+        "- Ringkasan: 3-6 sentences.",
+        "- Poin penting: bullets.",
+        "- Keputusan: bullets, or '-' if none.",
+        "- Tindak lanjut: action items agreed in the meeting as bullets (task - owner - deadline), or '-' if none.",
+        "- Saran tindak lanjut (AI): 3-5 extra suggestions of your own that were NOT said in the meeting: open "
+        "questions to resolve, risks to check, items for the next agenda. Start each bullet with 'Saran:'.",
+        "Never copy these instructions into the notes.",
         "Except for the AI suggestion section, only use facts from the transcript. Never invent names, numbers or "
         "deadlines. Keep the suggestions clearly separate from decisions and action items. "
         "Some parts may be marked as missing; mention that in the summary if so.",
     ] + ([ROMANIZE_RULE] if romanize else []) + ([HOKKIEN_MEANING] if language in HOKKIEN_LANGS else []))
+
+
+def clean_summary(md: str) -> str:
+    """Older notes have the prompt's explanation copied after a heading ('## Ringkasan (3-6 sentences)'): drop it."""
+    out = []
+    for line in (md or "").splitlines():
+        for h in SECTIONS:
+            if line.startswith("## " + h):
+                line = "## " + h
+                break
+        out.append(line)
+    return "\n".join(out)
 
 
 def qa_prompt() -> str:

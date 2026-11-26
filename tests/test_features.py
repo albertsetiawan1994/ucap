@@ -352,3 +352,19 @@ def test_hokkien_meaning_hint_in_edits_and_notes():
     assert "gua (I)" not in gc.build_command_prompt("casual", [], "id")
     assert "gua (I)" in meetings.summary_prompt(language="nan_mdn")
     assert "gua (I)" not in meetings.summary_prompt()
+
+
+# ---- meeting notes readability ----
+def test_summary_prompt_headings_are_bare():
+    p = meetings.summary_prompt()
+    for h in ("## Peserta", "## Ringkasan", "## Keputusan", "## Tindak lanjut", "## Saran tindak lanjut (AI)"):
+        assert h + "\n" in p + "\n", h                      # heading alone on its line: nothing for Gemini to copy
+    assert "Never copy these instructions" in p
+
+
+def test_clean_summary_strips_echoed_instructions():
+    md = ("# Rapat\n## Ringkasan  (3-6 sentences)\nIsi.\n"
+          "## Saran tindak lanjut (AI)  (3-5 extra suggestions ... Start each bullet with 'Saran:'.)\n- Saran: x")
+    out = meetings.clean_summary(md)
+    assert "## Ringkasan\nIsi." in out and "## Saran tindak lanjut (AI)\n- Saran: x" in out
+    assert "3-6 sentences" not in out and meetings.clean_summary("## Tindak lanjut\n- a") == "## Tindak lanjut\n- a"

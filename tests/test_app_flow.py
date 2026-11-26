@@ -109,3 +109,17 @@ def test_recording_continues_briefly_after_release(app):
     rec.active, rec.stopped = False, False
     app._finish_stop()                                        # cancelled during the tail: nothing happens
     assert not rec.stopped
+
+
+def test_ask_notes_can_be_limited_to_one_meeting(app, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(gemini_client, "generate", lambda pool, model, sys, contents, *a, **k:
+                        seen.update(ctx=contents[0]) or {"text": "jawab"})
+    a = app.meetings.add("Rapat A", "d", 60, "ta", "sa")
+    app.meetings.add("Rapat B", "d", 60, "tb", "sb")
+    import threading
+    done = threading.Event()
+    app.post = lambda ev: done.set()
+    app.ask_notes("apa?", lambda *x: None, only=a)
+    done.wait(5)
+    assert "Rapat A" in seen["ctx"] and "Rapat B" not in seen["ctx"]

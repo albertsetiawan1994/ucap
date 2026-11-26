@@ -523,9 +523,9 @@ class UcapApp:
         self._meeting_changed()
         self.win.refresh_meetings_list(select=meeting["id"] if meeting else None)
 
-    def ask_notes(self, question: str, callback) -> None:
-        """callback(answer_or_None, error_or_None) on the GUI thread."""
-        notes = list(self.meetings.items)
+    def ask_notes(self, question: str, callback, only: dict | None = None) -> None:
+        """callback(answer_or_None, error_or_None) on the GUI thread; `only` limits the question to one meeting."""
+        notes = [only] if only else list(self.meetings.items)
         model, available = self.settings["model"], list(self.settings["model_list"])
 
         def work():

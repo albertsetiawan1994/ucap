@@ -106,6 +106,8 @@ STRINGS = {
         "sec_recording": "Perekaman", "sec_backup": "Cadangan pengaturan",
         "meet_rec_title": "Rekam rapat", "meet_list_title": "Notulen tersimpan",
         "romanize": "Tulis juga ejaan Latin untuk aksara non-Latin, mis. 我们 (wǒmen)",
+        "meet_tab_ask": "Tanya", "meet_more": "Lainnya", "meet_scope_this": "Rapat ini",
+        "meet_scope_all": "Semua rapat", "meet_pick_first": "Pilih rapat dulu di daftar, atau ganti ke \"Semua rapat\".",
         "title_input": "Ucap",
     },
     "en": {
@@ -213,6 +215,8 @@ STRINGS = {
         "sec_recording": "Recording", "sec_backup": "Settings backup",
         "meet_rec_title": "Record a meeting", "meet_list_title": "Saved notes",
         "romanize": "Add Latin spelling to non-Latin scripts, e.g. 我们 (wǒmen)",
+        "meet_tab_ask": "Ask", "meet_more": "More", "meet_scope_this": "This meeting",
+        "meet_scope_all": "All meetings", "meet_pick_first": "Pick a meeting in the list first, or switch to \"All meetings\".",
         "title_input": "Ucap",
     },
 }

@@ -147,6 +147,12 @@ def stylesheet() -> str:
         border-radius: 10px; padding: 6px 10px; selection-background-color: {ACCENT_SOFT}; selection-color: {TEXT}; }}
     QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus {{ border: 1px solid {ACCENT}; }}
     QLineEdit[readOnly="true"] {{ background: {SUBTLE}; font-weight: 700; }}
+    QTextEdit[readOnly="true"]:focus {{ border: 1px solid {LINE}; }}
+    QFrame#BubbleMe {{ background: {ACCENT_SOFT}; border-radius: 14px; }}
+    QFrame#BubbleAi {{ background: {SUBTLE}; border: 1px solid {LINE}; border-radius: 14px; }}
+    QFrame#BubbleMe QLabel, QFrame#BubbleAi QLabel {{ background: transparent; }}
+    QFrame#BubbleAi QPushButton {{ padding: 3px 10px; font-size: 9pt; }}
+    QPushButton#SegTab {{ border-radius: 9px; padding: 6px 16px; }}
     QComboBox::drop-down {{ border: none; width: 28px; }}
     QComboBox::down-arrow {{ image: url({_arrow_png()}); width: 12px; height: 12px; }}
     QComboBox QAbstractItemView {{ border: 1px solid {LINE}; border-radius: 8px; selection-background-color: {ACCENT_SOFT};

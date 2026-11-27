@@ -8,12 +8,55 @@ import time
 from .errors import UcapError
 from .styles import STYLE_RULES
 
-MEDAN_WORDS = ("gua (I), lu (you), i (he/she), lan (we), in (they), lang (person), ai (want), mai (don't), "
-               "m (not), bo (no/not), u (have), si (is), khi (go), lai (come), ciak (eat), lim (drink), "
-               "khun (sleep), kong (say), kua (see), thia (hear), cai (know), ho (good), cin (very), "
-               "tua (big), se (small), kin (fast), ban (slow), cia (here), hia (there), simi (what), "
-               "tai ci (matter), thau ke (boss), kin a jit (today), bin a cai (tomorrow), kamsia (thank you), "
-               "paiseh (sorry), lui (money)")
+# Medan Hokkien as Medan people spell it in chat (source: belajarhokkienmedan.blogspot.com word lists).
+MEDAN_WORDS = ("wa or gua (I), lu (you), i (he/she), walang (we), i lang (they), lu lang (you all), ai (want/like), "
+               "mai (don't), bo (no/not), be (cannot), esai (may), besai (must not), u or uw (have), si (is), "
+               "liau (already), boe (not yet), kin (-ing, after a verb), seng (first), e (possessive), kak (with), "
+               "ane (so/very), cekoe (extremely), hamik (what), cumik (why), hamang (who), talok (where), "
+               "kui (how many/expensive), khi (go/at), lai (come), ciak (eat), lim (drink), khun (sleep), "
+               "kong (say), khua (see), thia (hear), cai (know), ho (good/give), lui (money), thau ke (boss), "
+               "macai (tomorrow), kia jit (today), tongkim (now), thama (just now), kamsia (thank you), "
+               "paiseh (sorry)")
+MEDAN_VOCAB = (
+    "More Medan Hokkien words (chat spelling, meaning): "
+    "grammar: ciak kin (eating now), ciak liau (have eaten), ciak liau boe (have you eaten?), wa cau seng "
+    "(I'm off first), wa e chu (my house), khak (more), koe (than), nak (like), ce/no (one/two when counting: ce kai, "
+    "no kai, ce liap, ce pao), pepe (together), kaki (self), emsi (it is not), emcai (don't know), emka (don't dare), "
+    "mien (no need), cinchai (whatever); "
+    "questions: cumik su (what's wrong), khi talok (where to/at), kui ce (how much), kui tiam (what time), pai kui "
+    "(when), kui ku (how long), hancua (how); "
+    "time: cakhi (morning), tiong thau (midday), epo (afternoon), ame (night), pua me (midnight), kin jit (today), "
+    "au jit (day after tomorrow), came (last night), kuca (before), opai (next time), cebanya (a moment), tan (wait/"
+    "later), tak pai (always), tata jit (every day), tiam sia (time), pai it, pai ji, pai sa, pai si, pai go, pai lak "
+    "(Monday to Saturday), lepai (Sunday); "
+    "numbers: it, ji, sa, si, go, lak, chit, pek, kau, cap, jap go (25), ce pak (100), ce cheng (1,000), ce ban "
+    "(10,000), ce tiau (1,000,000), pua (half); "
+    "people: lang (person), mama (mother), tia (father), koko (older brother), cici (older sister), titi (younger "
+    "brother), mei mei (younger sister), akong (grandfather), ama (grandmother), acek (uncle, older man), kuku "
+    "(uncle), cabo (girl/woman), tapo (boy/man), kia (child), bo (wife), ang (husband), ailang (boyfriend/girlfriend), "
+    "pengiu (friend), lau se (teacher), lau lang (parents/old people), huana lang (Indonesian native), tenlang "
+    "(Chinese person); "
+    "verbs: tui (go home), cau (leave/run), kia (walk), che (get up), kong ua (talk), kongko (chat), mui or meng "
+    "(ask), in (answer), pat (know someone/ever), sio (think), gien (wish), be (buy/sell), heng (pay), tho (ask for), "
+    "gia (take), cak (bring), choe (look for), co (do/make), cokang (work), ok chek (study), thak chek (go to "
+    "school), sia (write), cu (cook), cien (fry), cha (stir-fry), se (wash), sau (sweep), cheng (wear), thau (take "
+    "off), khui (open), kham (close), theng (stop), kio (call), me (scold), hau (cry), chio (laugh), phak (hit), "
+    "tu than (meet), khua tiok (see/notice), kau (arrive), jip (enter), chut (go out), tua (live), iong (use), "
+    "ua (change), phien (lie/cheat), liauli (take care of), ciok (borrow), khiam (owe); "
+    "adjectives: phai (bad/mean), phai khua (ugly), sui (pretty), ientao (handsome), tua (big/heavy rain), teng "
+    "(long/hard), te (short), khuai (fast), ban (slow), hui (far), kin (near), phi (cheap), ho ciak (tasty), "
+    "song (fun), sien (bored), chuan (tired), iau (hungry), pa (full), juak (hot weather), sio (hot to touch), "
+    "leng (cold), pui (fat), san (thin), gau (clever), gong (stupid), siau (crazy), kiam siap (stingy), hau lien "
+    "(arrogant), huahi (happy), ce (many), tampok (a little), sin (new), lau (old), khangkho (difficult), eng (easy), "
+    "laksam (dirty), cengkhi (clean), cin (true/serious); "
+    "things: chu (house), cui (water), pui or peng (rice), bak (meat), hu (fish), ke (chicken), chai (vegetables), "
+    "seng (ice), sa (shirt), kho (trousers), e (shoes), chek (book), ki (phone), motopit (motorbike), moto (car), "
+    "chia (vehicle), tiam (shop), pasat (market), lo (road), kang (job), su (matter/problem), keci (price), hi (film); "
+    "phrases: bo cumik su or biaukin (no problem), kiong hi (congratulations), sio sim (take care), chap siau "
+    "(ignore it), popi (hopefully), ho lah (okay), holiau (done), cin e a (really?), si meh (is that so?). "
+    "Many words share a sound: be = buy / sell / cannot, kia = child / walk / afraid / mirror, ho = good / give / "
+    "rain, kui = how many / expensive / ghost, bo = no / wife; pick the meaning from the sentence, the spelling "
+    "stays the same.")
 HOKKIEN_LANGS = ("auto", "nan", "nan_mdn")  # language settings whose text may contain Hokkien
 HOKKIEN_MEANING = ("The text may contain Hokkien (Medan Hokkien is written in Latin chat spelling, e.g. "
                    + MEDAN_WORDS + "). Hokkien words keep their Hokkien meaning: never read them as a "
@@ -22,9 +65,19 @@ HOKKIEN_MEANING = ("The text may contain Hokkien (Medan Hokkien is written in La
 HOKKIEN_AS_SPOKEN = (
     "Hokkien words are written exactly as they were said, word for word, in that Latin spelling. Never translate "
     "them and never swap one for an Indonesian, Malay, English or Mandarin word that sounds similar (e.g. 'cai' "
-    "is not 'cari', 'bo' is not 'bos', 'ciak' is not 'cak'); the writing style never changes them either. Short "
+    "is not 'cari', 'bo' is not 'bos', 'ciak' is not 'cak', 'hamik' is not 'hamil'); the writing style never "
+    "changes them either. Short "
     "Hokkien words such as e, a, u, i, bo, ho, la are real words, not fillers. If you are not sure which Hokkien "
     "word it was, write how it sounds.")
+
+
+
+def hokkien_hint(language: str) -> list[str]:
+    """Meaning hint for edits and meeting notes whose text may contain Hokkien."""
+    if language not in HOKKIEN_LANGS:
+        return []
+    return [HOKKIEN_MEANING + (" " + MEDAN_VOCAB if language == "nan_mdn" else "")]
+
 
 LANGUAGE_RULES = {
     "auto": "The speaker may use any language, most often Indonesian and English, and may switch languages "
@@ -39,7 +92,8 @@ LANGUAGE_RULES = {
     "nan_mdn": "The speaker uses Medan Hokkien (spoken in Medan, North Sumatra; close to Penang Hokkien), freely "
                "mixed with Indonesian, English and some Malay inside one sentence. Write Hokkien words in the "
                "informal Latin spelling Medan people use in chat, without tone marks, e.g. " + MEDAN_WORDS + ". Indonesian "
-               "and English words keep their normal spelling. Never write Chinese characters. " + HOKKIEN_AS_SPOKEN,
+               "and English words keep their normal spelling. Never write Chinese characters. " + HOKKIEN_AS_SPOKEN
+               + " " + MEDAN_VOCAB,
     "id": "The speaker uses Indonesian (English terms may appear and stay in English). Never translate.",
     "en": "The speaker uses English. Never translate.",
 }
@@ -157,8 +211,8 @@ def build_command_prompt(style: str = "casual", dictionary: list[str] | None = N
     if words:
         lines += ["", "Personal dictionary - spell these names/terms exactly like this:"]
         lines += [f"- {w}" for w in words]
-    if language in HOKKIEN_LANGS:
-        lines += ["", HOKKIEN_MEANING]
+    for hint in hokkien_hint(language):
+        lines += ["", hint]
     return "\n".join(lines)
 
 

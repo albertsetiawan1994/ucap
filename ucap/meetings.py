@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 
 from . import storage
-from .gemini_client import HOKKIEN_LANGS, HOKKIEN_MEANING, ROMANIZE_RULE, language_rule
+from .gemini_client import ROMANIZE_RULE, hokkien_hint, language_rule
 
 CHUNK_SECONDS = 300          # 5 min of 16 kHz WAV is ~9.6 MB, well under the 20 MB request limit
 CHUNK_TIMEOUT_MS = 120_000   # long audio takes longer than a dictation
@@ -134,7 +134,7 @@ def summary_prompt(romanize: bool = False, language: str = "auto") -> str:
         "Except for the AI suggestion section, only use facts from the transcript. Never invent names, numbers or "
         "deadlines. Keep the suggestions clearly separate from decisions and action items. "
         "Some parts may be marked as missing; mention that in the summary if so.",
-    ] + ([ROMANIZE_RULE] if romanize else []) + ([HOKKIEN_MEANING] if language in HOKKIEN_LANGS else []))
+    ] + ([ROMANIZE_RULE] if romanize else []) + hokkien_hint(language))
 
 
 def clean_summary(md: str) -> str:

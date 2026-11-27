@@ -371,6 +371,15 @@ def test_dictation_writes_exact_words_first():
     assert "thau ke (boss)" in gc.build_system_prompt("auto", "casual")
 
 
+def test_full_medan_vocabulary_only_in_medan_mode():
+    medan = gc.build_system_prompt("nan_mdn", "casual")
+    assert "ciak liau boe" in medan and "be = buy / sell / cannot" in medan
+    assert "ciak liau boe" not in gc.build_system_prompt("auto", "casual")   # auto keeps the short list
+    assert "ciak liau boe" in meetings.summary_prompt(language="nan_mdn")
+    assert "ciak liau boe" in gc.build_command_prompt("casual", [], "nan_mdn")
+    assert "lan (we)" not in medan and "simi (" not in medan                # not Medan usage (lan is vulgar)
+
+
 # ---- meeting notes readability ----
 def test_summary_prompt_headings_are_bare():
     p = meetings.summary_prompt()

@@ -63,7 +63,7 @@ HOKKIEN_MEANING = ("The text may contain Hokkien (Medan Hokkien is written in La
                    "similar-looking Indonesian, Malay or English word. When translating, translate by that meaning; "
                    "if you are not sure what a Hokkien word means, keep it unchanged instead of guessing.")
 HOKKIEN_AS_SPOKEN = (
-    "Hokkien words are written exactly as they were said, word for word, in that Latin spelling. Never translate "
+    "Hokkien words are written exactly as they were said, word for word, in that Latin spelling, without tone marks and without a romanization in parentheses. Never translate "
     "them and never swap one for an Indonesian, Malay, English or Mandarin word that sounds similar (e.g. 'cai' "
     "is not 'cari', 'bo' is not 'bos', 'ciak' is not 'cak', 'hamik' is not 'hamil'); the writing style never "
     "changes them either. Short "
@@ -119,7 +119,9 @@ ROMANIZE_RULE = (
     "parentheses. Mandarin -> Hanyu Pinyin with tone marks; Hokkien -> Pe̍h-ōe-jī with tone marks; "
     "Cantonese -> Jyutping; Japanese -> Hepburn romaji; Korean -> Revised Romanization; other scripts "
     "(Arabic, Thai, Hindi, Cyrillic, ...) -> the usual Latin transliteration. Example: "
-    "'我们明天开会。(Wǒmen míngtiān kāihuì.)'. Text already in Latin letters gets nothing added.")
+    "'我们明天开会。(Wǒmen míngtiān kāihuì.)'. Text already in Latin letters gets nothing added: never add a romanization in "
+    "parentheses, or tone marks, to Indonesian, English or Hokkien written in Latin chat spelling (e.g. Medan "
+    "Hokkien).")
 
 
 USER_INSTRUCTION = ("Transcribe and clean up this dictation. Answer only with <heard>...</heard> "

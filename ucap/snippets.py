@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import re
+import unicodedata
+from difflib import SequenceMatcher
 
 _WORD = re.compile(r"\w+", re.UNICODE)
 
@@ -38,7 +40,29 @@ def clean_output(text: str) -> str:
     t = re.sub(r"^(transcript|transkrip|text|teks)\s*:\s*", "", t, flags=re.IGNORECASE)
     if len(t) >= 2 and t[0] == t[-1] and t[0] in "\"'“”" and t.count(t[0]) == 2:
         t = t[1:-1].strip()
-    return t
+    return drop_latin_echo(t)
+
+
+_PAREN_AFTER = re.compile(r"([^()\n.!?]*[.!?]?)[ \t]*\(([^()\n]+)\)")
+
+
+def _latin_plain(s: str) -> str | None:
+    """Lowercase letters/digits without accents; None when the text is not in Latin letters."""
+    s = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
+    if re.search(r"[^\x00-\u024f\u1e00-\u1eff]", s):
+        return None
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
+def drop_latin_echo(text: str) -> str:
+    """'Lu tang e lak bui. (Lu-tang e lak-bue.)' -> drop the bracket: a romanization of text already in Latin
+    letters. Real brackets ('Rapat jam 5 (lihat lampiran)') and romanization after hanzi/kana stay."""
+    def repl(m):
+        a, b = _latin_plain(m.group(1)), _latin_plain(m.group(2))
+        if a and b and SequenceMatcher(None, a[-len(b) * 2:], b).ratio() >= 0.75:
+            return m.group(1)
+        return m.group(0)
+    return _PAREN_AFTER.sub(repl, text)
 
 
 def expand_snippets(text: str, snippets: list[dict]) -> str:

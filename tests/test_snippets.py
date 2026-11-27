@@ -47,3 +47,12 @@ def test_clean_output_keeps_only_final_text_of_heard_answer():
     assert clean_output("<heard>gua ai khi</heard>\nGua ai khi.") == "Gua ai khi."   # forgot <text>
     assert clean_output("<heard>gua ai khi") == "gua ai khi"                  # cut off: exact words beat nothing
     assert clean_output("<heard>a</heard><text>Halo") == "Halo"
+
+
+def test_romanization_of_latin_text_is_dropped():
+    assert clean_output("Lu tàng e lak bui.(Lú-tàng e lak-bué.)") == "Lu tàng e lak bui."
+    assert clean_output("Gua ai khi. (Guá ài khì.) Lu le?") == "Gua ai khi. Lu le?"
+    assert clean_output("我们明天开会。(Wǒmen míngtiān kāihuì.)") == "我们明天开会。(Wǒmen míngtiān kāihuì.)"
+    assert clean_output("Rapat jam 5 (lihat lampiran).") == "Rapat jam 5 (lihat lampiran)."
+    assert clean_output("Pakai API (Application Programming Interface).") == \
+        "Pakai API (Application Programming Interface)."

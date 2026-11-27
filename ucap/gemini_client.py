@@ -11,18 +11,24 @@ from .styles import STYLE_RULES
 MEDAN_WORDS = ("gua (I), lu (you), i (he/she), ai (want), mai (don't), bo (no/not), u (have), khi (go), "
                "lai (come), ciak (eat), kong (say), cai (know), simi (what), kamsia (thank you), paiseh (sorry), "
                "lui (money)")
-HOKKIEN_LANGS = ("nan", "nan_mdn")
+HOKKIEN_LANGS = ("auto", "nan", "nan_mdn")  # language settings whose text may contain Hokkien
 HOKKIEN_MEANING = ("The text may contain Hokkien (Medan Hokkien is written in Latin chat spelling, e.g. "
                    + MEDAN_WORDS + "). Hokkien words keep their Hokkien meaning: never read them as a "
                    "similar-looking Indonesian, Malay or English word. When translating, translate by that meaning; "
                    "if you are not sure what a Hokkien word means, keep it unchanged instead of guessing.")
+HOKKIEN_AS_SPOKEN = (
+    "Hokkien words are written exactly as they were said, word for word, in that Latin spelling. Never translate "
+    "them and never swap one for an Indonesian, Malay, English or Mandarin word that sounds similar (e.g. 'cai' "
+    "is not 'cari', 'bo' is not 'bos', 'ciak' is not 'cak'); the writing style never changes them either. Short "
+    "Hokkien words such as e, a, u, i, bo, ho, la are real words, not fillers. If you are not sure which Hokkien "
+    "word it was, write how it sounds.")
 
 LANGUAGE_RULES = {
     "auto": "The speaker may use any language, most often Indonesian and English, and may switch languages "
             "mid-sentence (code-switching), including Chinese languages such as Mandarin and Hokkien. Transcribe "
             "each part in the language it was spoken, in that language's own script; never translate. Hokkien as "
             "spoken in Indonesia (e.g. Medan) is written in the informal Latin spelling people use in chat "
-            "(gua, lu, kamsia, paiseh), not in Chinese characters.",
+            "(gua, lu, kamsia, paiseh), not in Chinese characters. " + HOKKIEN_AS_SPOKEN,
     "nan": "The speaker uses Hokkien (Min Nan), often mixed with Indonesian or Mandarin. Write Hokkien in Chinese "
            "characters as used for Taiwanese Hokkien; for a Hokkien word with no common character, write its "
            "Pe̍h-ōe-jī romanization instead. Indonesian and Mandarin parts stay as spoken. Never translate "
@@ -30,8 +36,7 @@ LANGUAGE_RULES = {
     "nan_mdn": "The speaker uses Medan Hokkien (spoken in Medan, North Sumatra; close to Penang Hokkien), freely "
                "mixed with Indonesian, English and some Malay inside one sentence. Write Hokkien words in the "
                "informal Latin spelling Medan people use in chat, without tone marks, e.g. " + MEDAN_WORDS + ". Indonesian "
-               "and English words keep their normal spelling. Never write Chinese characters, never translate, and "
-               "never replace a Hokkien word with an Indonesian or English word that only sounds similar.",
+               "and English words keep their normal spelling. Never write Chinese characters. " + HOKKIEN_AS_SPOKEN,
     "id": "The speaker uses Indonesian (English terms may appear and stay in English). Never translate.",
     "en": "The speaker uses English. Never translate.",
 }

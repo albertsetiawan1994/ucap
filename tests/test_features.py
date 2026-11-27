@@ -351,7 +351,16 @@ def test_hokkien_meaning_hint_in_edits_and_notes():
     assert "gua (I)" in c and "similar-looking" in c
     assert "gua (I)" not in gc.build_command_prompt("casual", [], "id")
     assert "gua (I)" in meetings.summary_prompt(language="nan_mdn")
-    assert "gua (I)" not in meetings.summary_prompt()
+    assert "gua (I)" in meetings.summary_prompt()                       # auto may contain Hokkien too
+    assert "gua (I)" not in meetings.summary_prompt(language="id")
+
+
+def test_hokkien_written_as_spoken_in_auto_and_medan():
+    for lang in ("auto", "nan_mdn"):
+        p = gc.build_system_prompt(lang, "formal")
+        assert "exactly as they were said" in p and "'cai' is not 'cari'" in p and "not fillers" in p
+        assert "exactly as they were said" in meetings.transcribe_prompt(lang)
+    assert "exactly as they were said" not in gc.build_system_prompt("id", "casual")
 
 
 # ---- meeting notes readability ----

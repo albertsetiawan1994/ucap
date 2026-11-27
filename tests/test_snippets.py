@@ -39,3 +39,11 @@ def test_clean_output_strips_wrappers():
     assert clean_output("Transkrip: Halo") == "Halo"
     assert clean_output('Dia bilang "ya" lalu "tidak"') == 'Dia bilang "ya" lalu "tidak"'
     assert clean_output(None) == ""
+
+
+def test_clean_output_keeps_only_final_text_of_heard_answer():
+    assert clean_output("<heard>eh gua ai khi</heard>\n<text>Gua ai khi.</text>") == "Gua ai khi."
+    assert clean_output("<heard></heard><text></text>") == ""                 # no speech
+    assert clean_output("<heard>gua ai khi</heard>\nGua ai khi.") == "Gua ai khi."   # forgot <text>
+    assert clean_output("<heard>gua ai khi") == "gua ai khi"                  # cut off: exact words beat nothing
+    assert clean_output("<heard>a</heard><text>Halo") == "Halo"

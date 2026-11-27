@@ -363,6 +363,14 @@ def test_hokkien_written_as_spoken_in_auto_and_medan():
     assert "exactly as they were said" not in gc.build_system_prompt("id", "casual")
 
 
+def test_dictation_writes_exact_words_first():
+    p = gc.build_system_prompt("en", "formal", ["Kubernetes"], code=True, romanize=True)
+    assert p.endswith(gc.OUTPUT_FORMAT) and "<heard>" in gc.USER_INSTRUCTION
+    assert "Never put a term from this list in place of a different word" in p
+    assert "never rephrase" in meetings.transcribe_prompt("id")
+    assert "thau ke (boss)" in gc.build_system_prompt("auto", "casual")
+
+
 # ---- meeting notes readability ----
 def test_summary_prompt_headings_are_bare():
     p = meetings.summary_prompt()

@@ -67,7 +67,8 @@ def transcribe_prompt(language: str = "auto", dictionary: list[str] | None = Non
              "", "Rules:", "1. " + _lang(language),
              "2. Write complete sentences with punctuation. Drop filler words (eh, em, um, uh) but keep "
              "particles such as lah, la, lo, leh, meh, sia. Never drop words: quiet or unclear words must still be "
-             "written, as your best guess.",
+             "written, as your best guess. Write what was said: never rephrase, translate or replace a word with a "
+             "different one.",
              "3. Start a new line whenever the speaker changes, as 'Name: text'. Use a real name only when "
              "there is a cue: a self-introduction ('saya Andi dari tim IT', 'this is Sarah'), being addressed or "
              "given the floor ('silakan Pak Budi', 'thanks, Sarah, go ahead' -> the next speaker is that person), "

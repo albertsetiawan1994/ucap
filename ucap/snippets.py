@@ -27,6 +27,14 @@ def clean_output(text: str) -> str:
     """Strip code fences / wrapping quotes / labels a model sometimes adds."""
     t = (text or "").strip()
     t = re.sub(r"^```[a-zA-Z]*\s*\n?|\n?```$", "", t).strip()
+    if "<heard>" in t or "<text>" in t:  # dictation answer: <heard>exact words</heard><text>final</text>
+        m = re.search(r"<text>(.*?)(?:</text>|\Z)", t, re.S)
+        if m:
+            t = m.group(1)
+        else:  # no <text>: whatever follows <heard>, else the exact words are better than nothing
+            heard, _, rest = t.partition("</heard>")
+            t = rest if rest.strip() else heard.replace("<heard>", "")
+        t = t.strip()
     t = re.sub(r"^(transcript|transkrip|text|teks)\s*:\s*", "", t, flags=re.IGNORECASE)
     if len(t) >= 2 and t[0] == t[-1] and t[0] in "\"'“”" and t.count(t[0]) == 2:
         t = t[1:-1].strip()
